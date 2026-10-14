@@ -3,6 +3,7 @@ import AppIntents
 import CoreAudio
 import CoreSpotlight
 import EventKit
+import SwiftUI
 import Testing
 @testable import Reprise
 
@@ -425,6 +426,14 @@ struct TranscriptTests {
         #expect(Transcriber.merge(you: [], them: [phrase("A", 1, "Hello")]).segments.map(\.speaker) == ["them"])
         #expect(Transcriber.numbered([phrase("A", 1, "Hello")], alone: nil).map(\.speaker) == [nil])
         #expect(Transcript(segments: [phrase(nil, 1, "Hello"), phrase(nil, 3, "there")]).text == "Hello there")
+    }
+
+    /// As Find marks a document: every match, whatever its case and accents.
+    @Test func searchMarksEveryMatch() {
+        let marked = AttributedString("Ship it, then ship the éclair", marking: "SHIP")
+        #expect(marked.runs.filter { $0.backgroundColor != nil }.map { String(marked[$0.range].characters) } == ["Ship", "ship"])
+        #expect(AttributedString("Eclair time", marking: "éclair").runs.contains { $0.backgroundColor != nil })
+        #expect(AttributedString("Ship", marking: "").runs.allSatisfy { $0.backgroundColor == nil })
     }
 
     @Test func readsDiarizedJSON() throws {

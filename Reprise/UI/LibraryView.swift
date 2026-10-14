@@ -44,7 +44,7 @@ struct LibraryView: View {
             }
         } detail: {
             if let selected {
-                RecordingDetail(recording: selected, shown: shown, model: model)
+                RecordingDetail(recording: selected, shown: shown, model: model, search: search)
                     .id("\(selected.id) \(selected.duration)") // duration is set when the file is finalized
                     .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.98)))
             } else if model.store.recordings.isEmpty {
@@ -182,6 +182,8 @@ private struct RecordingDetail: View {
     let recording: Recording
     let shown: [Recording] // the library's list, to select the next call after Move to Trash
     let model: AppModel
+    /// What the library is searched for: found in the transcript, and played from there.
+    let search: String
     /// Made on appear, not in `init`: SwiftUI makes this view anew on every change around it
     /// (each letter typed into the search), and each would open the file in a new player.
     @State private var player: Player?
@@ -189,30 +191,39 @@ private struct RecordingDetail: View {
     @State private var renaming = false
     @FocusState private var titleFocused: Bool
     @Environment(\.undoManager) private var undoManager
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                header
-                if model.isLive(recording) {
-                    LiveCard(model: model, recording: recording)
-                } else {
-                    if let player {
-                        if recording.hasVideo {
-                            VideoPlayer(player: player.avPlayer)
-                                .aspectRatio(16 / 10, contentMode: .fit)
-                                .clipShape(.rect(cornerRadius: 16))
-                                .shadow(color: .black.opacity(0.15), radius: 20, y: 10)
+        ScrollViewReader { scroller in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    header
+                    if model.isLive(recording) {
+                        LiveCard(model: model, recording: recording)
+                    } else {
+                        if let player {
+                            if recording.hasVideo {
+                                VideoPlayer(player: player.avPlayer)
+                                    .aspectRatio(16 / 10, contentMode: .fit)
+                                    .clipShape(.rect(cornerRadius: 16))
+                                    .shadow(color: .black.opacity(0.15), radius: 20, y: 10)
+                            }
+                            PlayerCard(player: player, waveformSource: recording.audioURL, marks: recording.marks ?? [])
+                                .tint(.primary)
                         }
-                        PlayerCard(player: player, waveformSource: recording.audioURL, marks: recording.marks ?? [])
-                            .tint(.primary)
+                        TranscriptSection(recording: recording, model: model, player: player, search: search)
                     }
-                    TranscriptSection(recording: recording, model: model, player: player)
                 }
+                .padding(32)
+                .frame(maxWidth: 820, alignment: .leading)
+                .frame(maxWidth: .infinity)
             }
-            .padding(32)
-            .frame(maxWidth: 820, alignment: .leading)
-            .frame(maxWidth: .infinity)
+            .task(id: search) {
+                if player == nil, !model.isLive(recording) {
+                    player = Player(url: recording.hasVideo ? recording.videoURL : recording.audioURL)
+                }
+                find(scroller)
+            }
         }
         .toolbar {
             ToolbarSpacer(.fixed) // this call's actions apart from Record, which isn't about it
@@ -225,12 +236,15 @@ private struct RecordingDetail: View {
                     .disabled(model.isLive(recording))
             }
         }
-        .onAppear {
-            if player == nil, !model.isLive(recording) {
-                player = Player(url: recording.hasVideo ? recording.videoURL : recording.audioURL)
-            }
-        }
         .onDisappear { player?.avPlayer.pause() }
+    }
+
+    /// The first phrase the search found, in sight and ready to play, as Find goes to the first match.
+    private func find(_ scroller: ScrollViewProxy) {
+        guard !search.isEmpty, let segments = model.store.segments(of: recording),
+              let first = segments.firstIndex(where: { $0.text.localizedStandardContains(search) }) else { return }
+        if player?.isPlaying == false { player?.seek(to: segments[first].start) } // not away from what's playing
+        withAnimation(reduceMotion ? nil : .smooth) { scroller.scrollTo(first, anchor: .center) }
     }
 
     private func saveTitle() {
@@ -566,6 +580,7 @@ private struct TranscriptSection: View {
     let recording: Recording
     let model: AppModel
     let player: Player?
+    let search: String
     @State private var copied = false
     @Environment(\.openSettings) private var openSettings
 
@@ -603,9 +618,9 @@ private struct TranscriptSection: View {
                 if let progress = model.transcribing[recording.id] {
                     ProgressView("Transcribing…", value: progress)
                 } else if let segments = model.store.segments(of: recording) {
-                    Phrases(segments: segments, player: player)
+                    Phrases(segments: segments, player: player, search: search)
                 } else if let text = model.store.transcript(of: recording) {
-                    Text(text)
+                    Text(AttributedString(text, marking: search))
                         .textSelection(.enabled)
                         .lineSpacing(5)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -650,6 +665,7 @@ private struct TranscriptSection: View {
 private struct Phrases: View {
     let segments: [Transcript.Segment]
     let player: Player?
+    let search: String
 
     var body: some View {
         LazyVStack(alignment: .leading, spacing: 5) {
@@ -662,12 +678,29 @@ private struct Phrases: View {
                         .padding(.top, i == 0 ? 0 : 10)
                 }
                 Button { player?.seek(to: segment.start) } label: {
-                    Text(segment.text).frame(maxWidth: .infinity, alignment: .leading).contentShape(.rect)
+                    Text(AttributedString(segment.text, marking: search)).frame(maxWidth: .infinity, alignment: .leading).contentShape(.rect)
                 }
                 .buttonStyle(.plain)
                 .pointerStyle(.link)
                 .help(segment.start.clock)
+                .id(i) // where the search scrolls to
             }
+        }
+    }
+}
+
+extension AttributedString {
+    /// The text with what the search found marked, in the color Find marks it with in a document.
+    init(_ text: String, marking search: String) {
+        self.init(text)
+        guard !search.isEmpty else { return }
+        var rest = text.startIndex..<text.endIndex
+        while let found = text[rest].localizedStandardRange(of: search) {
+            if let range = Range(found, in: self) {
+                self[range].backgroundColor = Color(nsColor: .findHighlightColor)
+                self[range].foregroundColor = .black // on yellow in dark mode too
+            }
+            rest = found.upperBound..<text.endIndex
         }
     }
 }
