@@ -126,6 +126,29 @@ enum CalendarEvents {
         return read
     }
 
+    /// The call as Markdown, for Copy with Details: what and when it was, the moments marked, who
+    /// said what and when, and the folder, for an AI agent that can open the files.
+    func brief(of recording: Recording) -> String {
+        var lines = [
+            "# \(recording.title)",
+            "",
+            [recording.app?.name ?? String(localized: "Recording"), recording.startedAt.formatted(date: .long, time: .shortened), recording.duration.clock].joined(separator: " · "),
+            String(localized: "Files: `\(recording.folder.path)`"),
+        ]
+        if let marks = recording.marks, !marks.isEmpty {
+            lines.append(String(localized: "Marked moments: \(marks.map(\.clock).joined(separator: ", "))"))
+        }
+        lines += ["", "## \(String(localized: "Transcript"))", ""]
+        if let segments = segments(of: recording) {
+            lines += Transcript(segments: segments).turns.map { turn in
+                "[\(turn.start.clock)] " + (Transcript.name(of: turn.speaker).map { "\($0): " } ?? "") + turn.text + "\n"
+            }
+        } else {
+            lines.append(transcript(of: recording) ?? String(localized: "Not transcribed. The call's audio is in its folder."))
+        }
+        return lines.joined(separator: "\n").trimmingCharacters(in: .newlines)
+    }
+
     func save(_ recording: Recording) {
         transcripts.removeValue(forKey: recording.id) // saved after a transcript is written
         segments.removeValue(forKey: recording.id)

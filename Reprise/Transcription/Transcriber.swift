@@ -82,16 +82,21 @@ nonisolated struct Transcript: Codable {
     /// For `transcript.txt`, which search, Copy and the shortcut after a call read: a paragraph each
     /// time the speaker changes, "You: …".
     var text: String {
-        var turns: [(speaker: String?, text: String)] = []
+        turns.map { turn in Self.name(of: turn.speaker).map { "\($0): \(turn.text)" } ?? turn.text }
+            .joined(separator: "\n\n")
+    }
+
+    /// The phrases joined until the speaker changes, each turn from when it began.
+    var turns: [(speaker: String?, start: Double, text: String)] {
+        var turns: [(speaker: String?, start: Double, text: String)] = []
         for segment in segments {
             if let last = turns.last, last.speaker == segment.speaker {
                 turns[turns.count - 1].text += " " + segment.text
             } else {
-                turns.append((segment.speaker, segment.text))
+                turns.append((segment.speaker, segment.start, segment.text))
             }
         }
-        return turns.map { turn in Self.name(of: turn.speaker).map { "\($0): \(turn.text)" } ?? turn.text }
-            .joined(separator: "\n\n")
+        return turns
     }
 
     static func name(of speaker: String?) -> String? {

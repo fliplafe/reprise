@@ -557,6 +557,7 @@ private struct TranscriptSection: View {
     let recording: Recording
     let model: AppModel
     let player: Player?
+    @State private var copied = false
     @Environment(\.openSettings) private var openSettings
 
     var body: some View {
@@ -570,11 +571,17 @@ private struct TranscriptSection: View {
                         Button("Transcribe Again", systemImage: "arrow.clockwise") { model.transcribe(recording) }
                             .buttonStyle(.glass)
                     }
-                    Button("Copy", systemImage: "doc.on.doc") {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(text, forType: .string)
+                    // With details: the title and date, when each turn began, the marks, and the folder.
+                    Menu {
+                        Button("Copy with Details") { copy(model.store.brief(of: recording)) }
+                    } label: {
+                        Label(copied ? "Copied" : "Copy", systemImage: copied ? "checkmark" : "doc.on.doc")
+                    } primaryAction: {
+                        copy(text)
                     }
+                    .menuStyle(.button)
                     .buttonStyle(.glass)
+                    .fixedSize()
                 }
             }
 
@@ -614,6 +621,18 @@ private struct TranscriptSection: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(.background.secondary, in: .rect(cornerRadius: 22))
             .animation(.smooth, value: model.transcribing[recording.id] == nil)
+        }
+    }
+
+    /// Says so on the button for a moment: copying shows nothing else.
+    private func copy(_ string: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(string, forType: .string)
+        copied = true
+        AccessibilityNotification.Announcement(String(localized: "Copied")).post()
+        Task {
+            try? await Task.sleep(for: .seconds(1.5))
+            copied = false
         }
     }
 }

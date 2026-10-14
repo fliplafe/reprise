@@ -360,12 +360,32 @@
         }
       }
     },
+    "Copied" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скопировано"
+          }
+        }
+      }
+    },
     "Copy" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Скопировать"
+          }
+        }
+      }
+    },
+    "Copy with Details" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скопировать с подробностями"
           }
         }
       }
@@ -436,6 +456,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Все остальные — macOS спросит при первой записи"
+          }
+        }
+      }
+    },
+    "Files: `%@`" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файлы: `%@`"
           }
         }
       }
@@ -680,6 +710,16 @@
         }
       }
     },
+    "Marked moments: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отмеченные моменты: %@"
+          }
+        }
+      }
+    },
     "Marker at %@" : {
       "localizations" : {
         "ru" : {
@@ -836,6 +876,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Не в этот раз"
+          }
+        }
+      }
+    },
+    "Not transcribed. The call's audio is in its folder." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не расшифрован. Звук звонка лежит в его папке."
           }
         }
       }

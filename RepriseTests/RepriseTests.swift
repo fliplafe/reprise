@@ -308,6 +308,22 @@ struct UpdaterTests {
         #expect(store.recordings.first { $0.id == "\(recording.id) copy" }?.folder == copy)
     }
 
+    /// Pasted into an agent: who said what and when, the marks, and where the files are.
+    @Test func briefHasTheTranscriptMarksAndFolder() throws {
+        var recording = try store.create(app: nil, at: .now)
+        defer { try? FileManager.default.removeItem(at: recording.folder) }
+        recording.title = "Standup"
+        recording.duration = 95
+        recording.marks = [62]
+        let segments = [("you", 1.0, "Hi"), ("you", 3, "all"), ("1", 61, "Ship it")].map { Transcript.Segment(speaker: $0, start: $1, end: $1 + 1, text: $2) }
+        try JSONEncoder().encode(Transcript(segments: segments)).write(to: recording.segmentsURL)
+        store.save(recording)
+        let brief = store.brief(of: recording)
+        #expect(brief.hasPrefix("# Standup\n"))
+        #expect(brief.contains("Files: `\(recording.folder.path)`") && brief.contains("Marked moments: 1:02"))
+        #expect(brief.hasSuffix("## Transcript\n\n[0:01] You: Hi all\n\n[1:01] Speaker 1: Ship it"))
+    }
+
     /// Trashed while searching: the next match is selected, not the next call in the whole library.
     @Test func trashingSelectsTheNextCallShown() {
         #expect(AppModel.next(after: "b", in: ["a", "b", "d"]) == "d") // "c" is hidden by the search
