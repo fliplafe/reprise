@@ -88,7 +88,7 @@ On first start, Reprise asks for the **Microphone** (your voice) and **System Au
 
 ## Transcription
 
-Optional. Reprise sends the audio, in 10-minute parts, to any service with the OpenAI-compatible `POST /audio/transcriptions` endpoint. Set it up in **Settings > Transcription**. The API key stays in the Keychain.
+Optional. Reprise sends the audio, in 10-minute parts (whole to Refrain), to any service with the OpenAI-compatible `POST /audio/transcriptions` endpoint. Set it up in **Settings > Transcription**. The API key stays in the Keychain.
 
 | Service | Model | About 1 hour |
 |---|---|---|

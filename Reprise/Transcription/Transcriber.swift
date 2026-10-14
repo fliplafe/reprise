@@ -33,6 +33,10 @@ nonisolated struct TranscriptionService: Sendable {
     // ponytail: loopback only; a server elsewhere on the network diarizes calls up to 10 minutes.
     // Add private addresses if one should take long calls whole too.
     var isLocal: Bool { ["localhost", "127.0.0.1", "::1"].contains(URL(string: baseURL)?.host() ?? "") }
+
+    /// Refrain takes hours in one request, so it never gets pieces: no re-encoding, no context lost at a cut.
+    /// Other local servers may have limits of their own.
+    var isRefrain: Bool { baseURL == Self.refrain.baseURL }
 }
 
 /// Transcription settings, persisted in UserDefaults (API key in the Keychain).
@@ -190,7 +194,7 @@ nonisolated enum Transcriber {
         // Voices keep their labels only within one request, so a call to diarize goes whole: to a
         // server on this Mac at any length, to a cloud service only when it's one piece anyway.
         if format == .diarized, duration > chunk, !service.isLocal { throw Unsupported() }
-        let length = format == .diarized ? duration : chunk
+        let length = format == .diarized || service.isRefrain ? duration : chunk
         var phrases: [Transcript.Segment] = []
         var start: Double = 0
         repeat {
