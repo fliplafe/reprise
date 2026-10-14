@@ -504,7 +504,10 @@ struct EchoCancellerTests {
     }
 
     private func write(_ samples: [Float], to url: URL) throws {
-        let file = try AVAudioFile(forWriting: url, settings: AudioRecorder.fileSettings(rate: Double(rate)), commonFormat: .pcmFormatFloat32, interleaved: false)
+        let settings: [String: Any] = url.pathExtension == "wav"
+            ? [AVFormatIDKey: kAudioFormatLinearPCM, AVSampleRateKey: rate, AVNumberOfChannelsKey: 1, AVLinearPCMBitDepthKey: 16]
+            : AudioRecorder.fileSettings(rate: Double(rate))
+        let file = try AVAudioFile(forWriting: url, settings: settings, commonFormat: .pcmFormatFloat32, interleaved: false)
         let buffer = AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: AVAudioFrameCount(samples.count))!
         buffer.frameLength = buffer.frameCapacity
         samples.withUnsafeBufferPointer { buffer.floatChannelData![0].update(from: $0.baseAddress!, count: samples.count) }
@@ -524,7 +527,7 @@ struct EchoCancellerTests {
 
     /// Twenty seconds: they talk, then you, then both. Their sound comes back 25 ms later, with a
     /// reflection: what a MacBook's microphone hears of its speakers.
-    private func call(echo: Bool) throws -> (you: URL, them: URL, near: [Float]) {
+    private func call(echo: Bool, as format: String = "m4a") throws -> (you: URL, them: URL, near: [Float]) {
         let folder = FileManager.default.temporaryDirectory.appending(path: "reprise-echo-\(UUID().uuidString)", directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let length = 20 * rate
@@ -533,14 +536,15 @@ struct EchoCancellerTests {
         let mic = (0..<length).map { i in
             near[i] + (echo && i >= delay + 96 ? 0.4 * far[i - delay] + 0.15 * far[i - delay - 96] : 0)
         }
-        let you = folder.appending(path: "you.m4a"), them = folder.appending(path: "them.m4a")
+        let you = folder.appending(path: "you.\(format)"), them = folder.appending(path: "them.\(format)")
         try write(mic, to: you)
         try write(far, to: them)
         return (you, them, near)
     }
 
-    @Test func takesTheirEchoOutOfYourSide() throws {
-        let (you, them, near) = try call(echo: true)
+    @Test(arguments: ["m4a", "wav"])
+    func takesTheirEchoOutOfYourSide(format: String) throws {
+        let (you, them, near) = try call(echo: true, as: format)
         defer { try? FileManager.default.removeItem(at: you.deletingLastPathComponent()) }
         let before = try read(you)
         #expect(try EchoCanceller.lag(of: you, behind: them) == rate / 40)
@@ -560,5 +564,44 @@ struct EchoCancellerTests {
         let before = try Data(contentsOf: you)
         #expect(try !EchoCanceller.clean(you, against: them))
         #expect(try Data(contentsOf: you) == before)
+    }
+}
+
+struct WAVWriterTests {
+    /// A second of a tone, 40 ms at a time, as the recorder hands it over.
+    private func record(into url: URL, closing: Bool) throws -> WAVWriter {
+        let writer = try WAVWriter(url: url, rate: 48_000)
+        let cycle = AVAudioPCMBuffer(pcmFormat: writer.format, frameCapacity: 1920)!
+        cycle.frameLength = 1920
+        for n in 0..<25 {
+            for i in 0..<1920 { cycle.floatChannelData![0][i] = 0.5 * sin(Float(n * 1920 + i) * 2 * .pi / 48) }
+            try writer.encode(cycle)
+            _ = writer.writeIfDue()
+        }
+        if closing { writer.close() }
+        return writer
+    }
+
+    /// The tone, after the AAC files' encoder delay of silence, so the sides line up with the mix.
+    @Test func writesWhatItGets() throws {
+        let url = FileManager.default.temporaryDirectory.appending(path: "reprise-\(UUID().uuidString).wav")
+        defer { try? FileManager.default.removeItem(at: url) }
+        _ = try record(into: url, closing: true)
+        let file = try AVAudioFile(forReading: url)
+        #expect(file.length == Int64(AudioRecorder.encoderDelay + 48_000))
+        let buffer = AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: AVAudioFrameCount(file.length))!
+        try file.read(into: buffer)
+        let samples = UnsafeBufferPointer(start: buffer.floatChannelData![0], count: Int(buffer.frameLength))
+        #expect(samples.prefix(AudioRecorder.encoderDelay).allSatisfy { $0 == 0 })
+        #expect(abs(samples[AudioRecorder.encoderDelay + 12] - 0.5) < 0.001) // a quarter of the tone's period in
+    }
+
+    /// Cut short without a close, as by a crash: what was written plays.
+    @Test func playsWithoutAClose() throws {
+        let url = FileManager.default.temporaryDirectory.appending(path: "reprise-\(UUID().uuidString).wav")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let writer = try record(into: url, closing: false)
+        #expect(writer.written > 24_000)
+        #expect(try AVAudioFile(forReading: url).length == Int64(writer.written))
     }
 }

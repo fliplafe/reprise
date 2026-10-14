@@ -1,4 +1,5 @@
 import AVFoundation
+import Accelerate
 import CoreAudio
 import Synchronization
 
@@ -23,7 +24,7 @@ nonisolated final class AudioRecorder: @unchecked Sendable {
     private var followingMicrophone: AudioObjectPropertyListenerBlock?
     private var procID: AudioDeviceIOProcID?
     /// The mix, then the sides if any.
-    private var files: [ADTSWriter] = []
+    private var files: [any SoundWriter] = []
     /// An IO cycle's sound for each file, at the device's rate.
     private var cycle: [AVAudioPCMBuffer] = []
     /// Bring a microphone's sound to the files' rate, when it runs at another one: one per file,
@@ -189,7 +190,7 @@ nonisolated final class AudioRecorder: @unchecked Sendable {
                 // the Mac's sound late (2399 frames, 50 ms, on a MacBook), and then comes the encoder delay.
                 let tapLatency = deviceID.ids(kAudioDevicePropertyStreams, scope: kAudioObjectPropertyScopeInput).map { $0.get(kAudioStreamPropertyLatency, UInt32(0)) }.max() ?? 0
                 lead = UInt64(Double(Int(tapLatency) + Self.encoderDelay) / rate * 1e9)
-                files = try ([url] + sideURLs).map { try ADTSWriter(url: $0, rate: rate) }
+                files = try ([url] + sideURLs).map { $0.pathExtension == "wav" ? try WAVWriter(url: $0, rate: rate) as any SoundWriter : try ADTSWriter(url: $0, rate: rate) }
             }
             let format = AVAudioFormat(standardFormatWithSampleRate: rate, channels: 1)!
             let fileFormat = files[0].format
@@ -279,7 +280,7 @@ nonisolated final class AudioRecorder: @unchecked Sendable {
     }
 
     /// Gaps under 10 ms are the clocks' jitter, not lost sound.
-    private func writeSilence(_ seconds: Double, to file: ADTSWriter) {
+    private func writeSilence(_ seconds: Double, to file: any SoundWriter) {
         guard seconds > 0.01, let silence = AVAudioPCMBuffer(pcmFormat: file.format, frameCapacity: 48_000) else { return }
         silence.floatChannelData![0].update(repeating: 0, count: Int(silence.frameCapacity))
         var left = AVAudioFrameCount(seconds * file.format.sampleRate)
@@ -340,11 +341,27 @@ nonisolated final class AudioRecorder: @unchecked Sendable {
     }
 }
 
+/// A file the recorder writes: half a second at a time, kept whole however the recording ends, and
+/// kept in memory while the disk is full.
+nonisolated protocol SoundWriter: AnyObject {
+    /// What it takes: mono Float32 at the file's rate.
+    var format: AVAudioFormat { get }
+    /// Frames in the file.
+    var written: Int { get }
+    /// The last write didn't fit: the sound waits in memory.
+    var isWaitingForDisk: Bool { get }
+    /// `nil`: the end.
+    func encode(_ buffer: AVAudioPCMBuffer?) throws
+    /// Writes once half a second has come since the last try. True when it tried.
+    func writeIfDue() -> Bool
+    func close()
+}
+
 /// The recording's sound as an ADTS stream, AAC packets each behind a 7-byte header, appended to
 /// the file: it plays however the recording ends. The bytes AVAudioFile writes, but kept while the
 /// disk is full and written once there's space again. AVAudioFile failed for good at the first
 /// write that didn't fit, and the rest of the call was lost even after space was freed.
-nonisolated final class ADTSWriter {
+nonisolated final class ADTSWriter: SoundWriter {
     /// What it encodes: mono Float32 at the file's rate.
     let format: AVAudioFormat
     private let encoder: AVAudioConverter
@@ -427,5 +444,89 @@ nonisolated final class ADTSWriter {
         try? encode(nil)
         write()
         try? handle.close()
+    }
+}
+
+/// A side without compression, for editing: 16-bit PCM in a WAV whose header is rewritten with
+/// each write, so the file is whole however the recording ends and needs no repair. No encoder:
+/// cheaper than AAC, at 5.8 MB a minute.
+// ponytail: a WAV's sizes are 32-bit, so a side stops being valid past 4 GB, 12 hours at 48 kHz.
+nonisolated final class WAVWriter: SoundWriter {
+    let format: AVAudioFormat
+    private let handle: FileHandle
+    private var unwritten = Data()
+    private var encoded = 0
+    private var tried = 0
+    private(set) var written = 0
+    private(set) var isWaitingForDisk = false
+
+    init(url: URL, rate: Double) throws {
+        format = AVAudioFormat(standardFormatWithSampleRate: rate, channels: 1)!
+        guard FileManager.default.createFile(atPath: url.path, contents: Self.header(rate: Int(rate), frames: 0)) else { throw CocoaError(.fileWriteUnknown) }
+        handle = try FileHandle(forWritingTo: url)
+        try handle.seekToEnd()
+        // Starts as late as the AAC files do, by their encoder delay, so the sides line up with
+        // the mix, the movie and the transcript.
+        unwritten = Data(count: AudioRecorder.encoderDelay * 2)
+        encoded = AudioRecorder.encoderDelay
+    }
+
+    /// One IO cycle's worth, kept from cycle to cycle.
+    private var samples: [Float] = [], pcm: [Int16] = []
+
+    func encode(_ buffer: AVAudioPCMBuffer?) throws {
+        guard let buffer, buffer.frameLength > 0 else { return }
+        let count = Int(buffer.frameLength)
+        if samples.count != count { (samples, pcm) = ([Float](repeating: 0, count: count), [Int16](repeating: 0, count: count)) }
+        var scale: Float = 32767, low: Float = -32768, high: Float = 32767
+        vDSP_vsmul(buffer.floatChannelData![0], 1, &scale, &samples, 1, vDSP_Length(count))
+        vDSP_vclip(samples, 1, &low, &high, &samples, 1, vDSP_Length(count))
+        vDSP_vfixr16(samples, 1, &pcm, 1, vDSP_Length(count))
+        pcm.withUnsafeBytes { unwritten.append(contentsOf: $0) } // little-endian, as WAV wants
+        encoded += count
+    }
+
+    func writeIfDue() -> Bool {
+        guard encoded - tried >= Int(format.sampleRate / 2) else { return false }
+        write()
+        return true
+    }
+
+    /// Cut back when it doesn't fit; the header then says what's there.
+    private func write() {
+        tried = encoded
+        guard !unwritten.isEmpty, let start = try? handle.offset() else { return }
+        do {
+            try handle.write(contentsOf: unwritten)
+            unwritten.removeAll(keepingCapacity: unwritten.count < 1 << 17)
+            written = encoded
+            isWaitingForDisk = false
+            try handle.seek(toOffset: 0)
+            try handle.write(contentsOf: Self.header(rate: Int(format.sampleRate), frames: written))
+            try handle.seekToEnd()
+        } catch {
+            try? handle.truncate(atOffset: start)
+            _ = try? handle.seekToEnd()
+            isWaitingForDisk = true
+        }
+    }
+
+    func close() {
+        write()
+        try? handle.close()
+    }
+
+    /// RIFF, WAVE, a `fmt ` chunk for mono 16-bit PCM, and the `data` chunk's header.
+    static func header(rate: Int, frames: Int) -> Data {
+        let bytes = frames * 2
+        var header = Data()
+        let append = { (value: Int, size: Int) in withUnsafeBytes(of: UInt32(value).littleEndian) { header.append(contentsOf: $0.prefix(size)) } }
+        header.append(contentsOf: Array("RIFF".utf8)); append(36 + bytes, 4)
+        header.append(contentsOf: Array("WAVEfmt ".utf8)); append(16, 4)
+        append(1, 2); append(1, 2) // PCM, one channel
+        append(rate, 4); append(rate * 2, 4) // bytes a second
+        append(2, 2); append(16, 2) // bytes a frame, bits a sample
+        header.append(contentsOf: Array("data".utf8)); append(bytes, 4)
+        return header
     }
 }

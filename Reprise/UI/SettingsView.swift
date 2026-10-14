@@ -29,6 +29,7 @@ private struct GeneralSettings: View {
     @AppStorage("recordFromStart") private var recordFromStart = false
     @AppStorage("callAppAudioOnly") private var callAppAudioOnly = false
     @AppStorage("separateTracks") private var separateTracks = false
+    @AppStorage(AppModel.sideFormatKey) private var sideFormat = "m4a"
     @AppStorage(CalendarEvents.key) private var calendarTitles = false
     @State private var calendars = CalendarEvents.isAllowed
     @AppStorage(Shortcut.key) private var shortcut = ""
@@ -93,7 +94,16 @@ private struct GeneralSettings: View {
                 }
                 Toggle(isOn: $separateTracks) {
                     Text("Also save each side in its own file")
-                    Text("You and the others, as you.m4a and them.m4a next to the call, to edit a podcast or an interview. Without headphones, what your microphone heard of the others is taken out of your file after the call. Takes a little more power and disk space.")
+                    Text("You and the others, each in a file of its own next to the call, to edit a podcast or an interview. Without headphones, what your microphone heard of the others is taken out of your file after the call. Takes a little more power and disk space.")
+                }
+                if separateTracks {
+                    Picker(selection: $sideFormat) {
+                        Text("M4A").tag("m4a")
+                        Text("WAV, uncompressed").tag("wav")
+                    } label: {
+                        Text("Format of each side")
+                        Text("WAV keeps the sound as it was recorded, for editing, at about 350 MB an hour per side.")
+                    }
                 }
                 Toggle(isOn: Binding {
                     calendarTitles

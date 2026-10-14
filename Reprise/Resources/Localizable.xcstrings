@@ -603,6 +603,16 @@
         }
       }
     },
+    "Format of each side" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Формат каждой стороны"
+          }
+        }
+      }
+    },
     "Forward 15 Seconds" : {
       "localizations" : {
         "ru" : {
@@ -772,6 +782,9 @@
           }
         }
       }
+    },
+    "M4A" : {
+      "shouldTranslate" : false
     },
     "Mark This Moment" : {
       "localizations" : {
@@ -2019,6 +2032,26 @@
         }
       }
     },
+    "WAV keeps the sound as it was recorded, for editing, at about 350 MB an hour per side." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WAV сохраняет звук таким, каким он записан, — для монтажа. Около 350 МБ в час на каждую сторону."
+          }
+        }
+      }
+    },
+    "WAV, uncompressed" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WAV, без сжатия"
+          }
+        }
+      }
+    },
     "Waiting for calls" : {
       "localizations" : {
         "ru" : {
@@ -2099,12 +2132,12 @@
         }
       }
     },
-    "You and the others, as you.m4a and them.m4a next to the call, to edit a podcast or an interview. Without headphones, what your microphone heard of the others is taken out of your file after the call. Takes a little more power and disk space." : {
+    "You and the others, each in a file of its own next to the call, to edit a podcast or an interview. Without headphones, what your microphone heard of the others is taken out of your file after the call. Takes a little more power and disk space." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Вы и собеседники — в файлах you.m4a и them.m4a рядом со звонком, чтобы монтировать подкаст или интервью. Без наушников то, что ваш микрофон услышал от собеседников, после звонка убирается из вашего файла. Чуть больше нагрузки и места на диске."
+            "value" : "Вы и собеседники — каждый в своём файле рядом со звонком, чтобы монтировать подкаст или интервью. Без наушников то, что ваш микрофон услышал от собеседников, после звонка убирается из вашего файла. Чуть больше нагрузки и места на диске."
           }
         }
       }

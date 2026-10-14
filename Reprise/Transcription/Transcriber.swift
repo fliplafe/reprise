@@ -205,7 +205,8 @@ nonisolated enum Transcriber {
         repeat {
             await progress(start / max(duration, 1))
             let piece: URL
-            if duration <= length {
+            // A WAV side goes as AAC too: ten times smaller, and what every service takes.
+            if duration <= length, audio.pathExtension == "m4a" {
                 piece = audio
             } else {
                 piece = FileManager.default.temporaryDirectory.appending(path: "reprise-\(UUID().uuidString).m4a")

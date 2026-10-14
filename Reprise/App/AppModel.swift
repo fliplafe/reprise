@@ -249,9 +249,13 @@ enum IslandState: Equatable {
 
     /// Records the call's sound into its folder, as Settings have it.
     private func recorder(for recording: Recording) -> AudioRecorder {
-        AudioRecorder(url: recording.partialAudioURL, processes: tapped(recording.app),
-                      sides: UserDefaults.standard.bool(forKey: "separateTracks") ? recording.tracks.map(\.partial) : [])
+        let sides = !UserDefaults.standard.bool(forKey: "separateTracks") ? []
+            : UserDefaults.standard.string(forKey: Self.sideFormatKey) == "wav" ? recording.losslessTracks : recording.tracks.map(\.partial)
+        return AudioRecorder(url: recording.partialAudioURL, processes: tapped(recording.app), sides: sides)
     }
+
+    /// Settings' format of the sides: "m4a", or "wav" uncompressed.
+    static let sideFormatKey = "sideFormat"
 
     /// The call app's processes when Settings limit the audio to it. None, the whole Mac: a
     /// recording without a call, or an app whose audio processes aren't there.
@@ -373,8 +377,7 @@ enum IslandState: Equatable {
     // nothing cleans it again. Redo it at launch if that turns out to matter.
     /// Takes the others' voices out of your side, where the microphone heard them from the speakers.
     private func cancelEcho(in recording: Recording) {
-        let sides = recording.tracks.map(\.final)
-        guard sides.allSatisfy({ FileManager.default.fileExists(atPath: $0.path) }) else { return }
+        guard let sides = recording.sides else { return }
         let id = recording.id
         echoes[id] = Task {
             let started = ContinuousClock.now
@@ -505,15 +508,16 @@ enum IslandState: Equatable {
         let apiKey = TranscriptionSettings.apiKey
         let language = UserDefaults.standard.string(forKey: TranscriptionSettings.languageKey)
         let report: @Sendable (Double) async -> Void = { value in await MainActor.run { self.transcribing[recording.id] = value } }
-        let sides = recording.tracks.map(\.final)
         Task {
             await echoes[recording.id]?.value // your side is being cleaned of the echo
             do {
                 // With each side in a file of its own, the transcript knows who said what, and when;
                 // without, only a service that tells voices apart does.
-                let transcript = sides.allSatisfy({ FileManager.default.fileExists(atPath: $0.path) })
-                    ? try await Transcriber.transcribe(you: sides[0], them: sides[1], service: service, apiKey: apiKey, language: language, progress: report)
-                    : try await Transcriber.diarize(recording.audioURL, service: service, apiKey: apiKey, language: language, progress: report)
+                let transcript = if let sides = recording.sides {
+                    try await Transcriber.transcribe(you: sides[0], them: sides[1], service: service, apiKey: apiKey, language: language, progress: report)
+                } else {
+                    try await Transcriber.diarize(recording.audioURL, service: service, apiKey: apiKey, language: language, progress: report)
+                }
                 if let transcript {
                     try JSONEncoder().encode(transcript).write(to: recording.segmentsURL, options: .atomic)
                     try transcript.text.write(to: recording.transcriptURL, atomically: true, encoding: .utf8)

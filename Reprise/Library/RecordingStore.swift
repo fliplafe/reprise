@@ -4,7 +4,7 @@ import CoreSpotlight
 import EventKit
 
 /// One recorded call. Lives in its own folder:
-/// `~/Movies/Reprise/<id>/{recording.json, audio.m4a, you.m4a, them.m4a, screen.mov, transcript.txt, transcript.json}`
+/// `~/Movies/Reprise/<id>/{recording.json, audio.m4a, you.m4a or .wav, them.m4a or .wav, screen.mov, transcript.txt, transcript.json}`
 /// While recording, audio goes to `audio.aac` (ADTS), which stays playable even if the app is
 /// killed mid-call; it's repackaged into `audio.m4a` when the recording stops.
 struct Recording: Codable, Identifiable, Equatable {
@@ -27,9 +27,16 @@ struct Recording: Codable, Identifiable, Equatable {
     var partialAudioURL: URL { folder.appending(path: "audio.aac") }
     /// Whichever audio file exists: the finished `.m4a`, or the in-progress stream.
     var audioURL: URL { FileManager.default.fileExists(atPath: partialAudioURL.path) ? partialAudioURL : finalAudioURL }
-    /// Each side on its own, when Settings ask for it: your microphone, then everyone else.
+    /// Each side on its own, when Settings ask for it: your microphone, then everyone else. As AAC,
+    /// a crash-safe stream while recording, repackaged when it stops.
     var tracks: [(partial: URL, final: URL)] {
         ["you", "them"].map { (folder.appending(path: "\($0).aac"), folder.appending(path: "\($0).m4a")) }
+    }
+    /// The sides uncompressed, as WAV, whole as they're written.
+    var losslessTracks: [URL] { ["you", "them"].map { folder.appending(path: "\($0).wav") } }
+    /// The sides as saved, in whichever format; none for a call recorded without them.
+    var sides: [URL]? {
+        [losslessTracks, tracks.map(\.final)].first { $0.allSatisfy { FileManager.default.fileExists(atPath: $0.path) } }
     }
     var videoURL: URL { folder.appending(path: "screen.mov") }
     var transcriptURL: URL { folder.appending(path: "transcript.txt") }
