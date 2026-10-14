@@ -478,9 +478,12 @@ enum IslandState: Equatable {
         let sides = recording.tracks.map(\.final)
         Task {
             do {
-                // With each side in a file of its own, the transcript knows who said what, and when.
-                if sides.allSatisfy({ FileManager.default.fileExists(atPath: $0.path) }),
-                   let transcript = try await Transcriber.transcribe(you: sides[0], them: sides[1], service: service, apiKey: apiKey, language: language, progress: report) {
+                // With each side in a file of its own, the transcript knows who said what, and when;
+                // without, only a service that tells voices apart does.
+                let transcript = sides.allSatisfy({ FileManager.default.fileExists(atPath: $0.path) })
+                    ? try await Transcriber.transcribe(you: sides[0], them: sides[1], service: service, apiKey: apiKey, language: language, progress: report)
+                    : try await Transcriber.diarize(recording.audioURL, service: service, apiKey: apiKey, language: language, progress: report)
+                if let transcript {
                     try JSONEncoder().encode(transcript).write(to: recording.segmentsURL, options: .atomic)
                     try transcript.text.write(to: recording.transcriptURL, atomically: true, encoding: .utf8)
                 } else {

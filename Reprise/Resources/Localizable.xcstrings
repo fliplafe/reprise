@@ -1466,6 +1466,16 @@
         }
       }
     },
+    "Speaker %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Участник %@"
+          }
+        }
+      }
+    },
     "Speed" : {
       "localizations" : {
         "ru" : {

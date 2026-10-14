@@ -624,8 +624,9 @@ private struct Phrases: View {
         LazyVStack(alignment: .leading, spacing: 5) {
             ForEach(segments.indices, id: \.self) { i in
                 let segment = segments[i]
-                if i == 0 || segments[i - 1].speaker != segment.speaker { // named where the speaker changes
-                    Text(Transcript.name(of: segment.speaker))
+                if i == 0 || segments[i - 1].speaker != segment.speaker, // named where the speaker changes
+                   let name = Transcript.name(of: segment.speaker) {
+                    Text(name)
                         .font(.headline)
                         .padding(.top, i == 0 ? 0 : 10)
                 }

@@ -30,7 +30,7 @@ struct Recording: Codable, Identifiable, Equatable {
     }
     var videoURL: URL { folder.appending(path: "screen.mov") }
     var transcriptURL: URL { folder.appending(path: "transcript.txt") }
-    /// The transcript phrase by phrase, with who said it and when: only from separate tracks.
+    /// The transcript phrase by phrase, with who said it and when: from separate tracks or a service that tells voices apart.
     var segmentsURL: URL { folder.appending(path: "transcript.json") }
     // ponytail: a call trashed in Finder keeps its clones' space until macOS clears the temporary
     // folder (3 days unused). Clear this folder for calls gone at reload if that's too late.

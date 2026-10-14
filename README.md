@@ -102,6 +102,8 @@ A cloud service receives the audio of your call. To keep it on your Mac, use Ref
 
 If you save each side, Reprise transcribes each one on its own, so the transcript says who spoke, and a click on a phrase plays the call from there. That needs a service that returns timestamps (`verbose_json`), such as Refrain, Groq or a local Whisper server; with any other, Reprise transcribes the call as one. Each side is as long as the call, so a cloud service bills the call twice. Wear headphones: without them, your microphone hears the others, and their words show up as yours too.
 
+A service that tells voices apart (`diarized_json`, such as OpenAI's `gpt-4o-transcribe-diarize` or a self-hosted server) also splits the others into Speaker 1, Speaker 2 and so on, and labels a call recorded without its sides. It labels the voices anew in every request, so Reprise sends the call whole: to a server on this Mac at any length, to a cloud service only up to 10 minutes.
+
 ## Files
 
 Each call is a folder in `~/Movies/Reprise`:
@@ -114,7 +116,7 @@ Each call is a folder in `~/Movies/Reprise`:
 ├── them.m4a         everyone else alone, if you save each side
 ├── screen.mov       the screen, if you recorded it
 ├── transcript.txt   the text, if you transcribed it
-└── transcript.json  each phrase with who said it and when, if you transcribed each side
+└── transcript.json  each phrase with who said it and when, if the transcript knows
 ```
 
 While Reprise records, the sound goes to a stream that survives a crash or a power loss, and the movie is written in 5-second parts. Reprise repairs a cut-off recording at the next start. A deleted call goes to the Trash.

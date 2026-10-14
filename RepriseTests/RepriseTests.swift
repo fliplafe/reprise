@@ -388,17 +388,27 @@ struct UpdaterTests {
 }
 
 struct TranscriptTests {
-    @Test func mergesSidesByTimeFromTheStartOfTheCall() {
-        let phrase = { (start: Double, text: String) in Transcript.Segment(start: start, end: start + 2, text: text) }
-        // Each side's second piece starts 10 minutes in; its times count from there.
-        let merged = Transcriber.merge(you: [[phrase(1, "Hi"), phrase(8, "So")], [phrase(12.34, "Bye")]],
-                                       them: [[phrase(3, "Hello")], [phrase(0.5, "Later")]])
-        #expect(merged.segments == [
-            .init(speaker: "you", start: 1, end: 3, text: "Hi"),
-            .init(speaker: "them", start: 3, end: 5, text: "Hello"),
-            .init(speaker: "you", start: 8, end: 10, text: "So"),
-            .init(speaker: "them", start: 600.5, end: 602.5, text: "Later"),
-            .init(speaker: "you", start: 612.34, end: 614.34, text: "Bye"),
-        ])
+    let phrase = { (speaker: String?, start: Double, text: String) in Transcript.Segment(speaker: speaker, start: start, end: start + 2, text: text) }
+
+    @Test func mergesSidesByTime() {
+        let merged = Transcriber.merge(you: [phrase(nil, 1, "Hi"), phrase(nil, 8, "So")], them: [phrase(nil, 3, "Hello")])
+        #expect(merged.segments == [phrase("you", 1, "Hi"), phrase("them", 3, "Hello"), phrase("you", 8, "So")])
+        #expect(merged.text == "You: Hi\n\nOthers: Hello\n\nYou: So")
+    }
+
+    @Test func numbersTheVoicesTheServiceToldApart() {
+        // Labels as the service gives them, in the order they first speak; on the microphone it's you.
+        let merged = Transcriber.merge(you: [phrase("A", 4, "Me")], them: [phrase("B", 1, "One"), phrase("A", 3, "Two"), phrase("B", 6, "One again")])
+        #expect(merged.segments.map(\.speaker) == ["1", "2", "you", "1"])
+        // One voice is just the others; on the mix, nobody in particular.
+        #expect(Transcriber.merge(you: [], them: [phrase("A", 1, "Hello")]).segments.map(\.speaker) == ["them"])
+        #expect(Transcriber.numbered([phrase("A", 1, "Hello")], alone: nil).map(\.speaker) == [nil])
+        #expect(Transcript(segments: [phrase(nil, 1, "Hello"), phrase(nil, 3, "there")]).text == "Hello there")
+    }
+
+    @Test func readsDiarizedJSON() throws {
+        let answer = #"{"task":"transcribe","text":"Shall we start? Yes.","segments":[{"type":"transcript.text.segment","id":"seg_0","start":0.0,"end":1.5,"speaker":"A","text":" Shall we start?"},{"type":"transcript.text.segment","id":"seg_1","start":2.0,"end":4.0,"speaker":"B","text":"Yes."}]}"#
+        let segments = try JSONDecoder().decode(Transcript.self, from: Data(answer.utf8)).segments
+        #expect(segments.map(\.speaker) == ["A", "B"] && segments[1].end == 4)
     }
 }

@@ -28,6 +28,11 @@ nonisolated struct TranscriptionService: Sendable {
         else { return false }
         return String(decoding: data, as: UTF8.self).contains(#""owned_by":"refrain""#)
     }
+
+    /// A server on this Mac, which takes a call whole rather than 10 minutes at a time.
+    // ponytail: loopback only; a server elsewhere on the network diarizes calls up to 10 minutes.
+    // Add private addresses if one should take long calls whole too.
+    var isLocal: Bool { ["localhost", "127.0.0.1", "::1"].contains(URL(string: baseURL)?.host() ?? "") }
 }
 
 /// Transcription settings, persisted in UserDefaults (API key in the Keychain).
@@ -58,7 +63,8 @@ enum TranscriptionSettings {
 }
 
 /// `transcript.json`: what was said, phrase by phrase. `start` and `end` are seconds into the call;
-/// `speaker` is "you" or "them", from the side it was heard on.
+/// `speaker` is "you" or "them", from the side it was heard on, or "1", "2"… for the voices a
+/// service told apart; none when nothing tells who.
 nonisolated struct Transcript: Codable {
     nonisolated struct Segment: Codable, Equatable {
         var speaker: String?
@@ -74,17 +80,23 @@ nonisolated struct Transcript: Codable {
     var text: String {
         var turns: [(speaker: String?, text: String)] = []
         for segment in segments {
-            if turns.last?.speaker == segment.speaker {
+            if let last = turns.last, last.speaker == segment.speaker {
                 turns[turns.count - 1].text += " " + segment.text
             } else {
                 turns.append((segment.speaker, segment.text))
             }
         }
-        return turns.map { "\(Self.name(of: $0.speaker)): \($0.text)" }.joined(separator: "\n\n")
+        return turns.map { turn in Self.name(of: turn.speaker).map { "\($0): \(turn.text)" } ?? turn.text }
+            .joined(separator: "\n\n")
     }
 
-    static func name(of speaker: String?) -> String {
-        speaker == "you" ? String(localized: "You") : String(localized: "Others")
+    static func name(of speaker: String?) -> String? {
+        switch speaker {
+        case "you": String(localized: "You")
+        case "them": String(localized: "Others")
+        case let number?: String(localized: "Speaker \(number)")
+        case nil: nil
+        }
     }
 }
 
@@ -94,56 +106,87 @@ nonisolated enum Transcriber {
         _ audio: URL, service: TranscriptionService, apiKey: String?, language: String?,
         progress: @Sendable (Double) async -> Void
     ) async throws -> String {
-        try await pieces(of: audio, timed: false, service: service, apiKey: apiKey, language: language, progress: progress)
-            .joined().map(\.text).joined(separator: " ")
+        try await pieces(of: audio, as: .text, service: service, apiKey: apiKey, language: language, progress: progress)
+            .map(\.text).joined(separator: " ")
     }
 
-    /// Each side on its own, with times (`verbose_json`): who said what, without guessing from
-    /// voices. `nil` when the service doesn't time its text; the mix is transcribed instead.
-    static func transcribe(
-        you: URL, them: URL, service: TranscriptionService, apiKey: String?, language: String?,
+    /// The mix with who said what, from a service that tells voices apart: for a call without its
+    /// sides. `nil` when it can't, or the call is too long for a cloud service to label.
+    static func diarize(
+        _ audio: URL, service: TranscriptionService, apiKey: String?, language: String?,
         progress: @Sendable (Double) async -> Void
     ) async throws -> Transcript? {
         do {
-            let mine = try await pieces(of: you, timed: true, service: service, apiKey: apiKey, language: language) { await progress($0 / 2) }
-            let theirs = try await pieces(of: them, timed: true, service: service, apiKey: apiKey, language: language) { await progress(0.5 + $0 / 2) }
-            return merge(you: mine, them: theirs)
-        } catch is Untimed {
+            let segments = try await pieces(of: audio, as: .diarized, service: service, apiKey: apiKey, language: language, progress: progress)
+            return Transcript(segments: numbered(segments, alone: nil))
+        } catch is Unsupported {
             return nil
         }
     }
 
-    /// Both sides in the order they were said. Each comes as its pieces' phrases, timed from the
-    /// start of their piece; the transcript times them from the start of the call.
-    static func merge(you: [[Transcript.Segment]], them: [[Transcript.Segment]]) -> Transcript {
-        let segments = [("you", you), ("them", them)].flatMap { speaker, pieces in
-            pieces.enumerated().flatMap { index, piece in
-                // To the millisecond: 600 + 12.34 would be 612.3399999999999 in the file.
-                let time = { (($0 + Double(index) * chunk) * 1000).rounded() / 1000 }
-                return piece.map { Transcript.Segment(speaker: speaker, start: time($0.start), end: time($0.end), text: $0.text) }
-            }
+    /// Each side on its own, with times: who said what, without guessing from voices, and within the
+    /// others' side the voices a service tells apart. `nil` when the service doesn't time its text;
+    /// the mix is transcribed instead.
+    static func transcribe(
+        you: URL, them: URL, service: TranscriptionService, apiKey: String?, language: String?,
+        progress: @Sendable (Double) async -> Void
+    ) async throws -> Transcript? {
+        for format in [Format.diarized, .timed] {
+            do {
+                // Theirs first: whether the service tells voices apart is found out where it matters.
+                let theirs = try await pieces(of: them, as: format, service: service, apiKey: apiKey, language: language) { await progress($0 / 2) }
+                let mine = try await pieces(of: you, as: format, service: service, apiKey: apiKey, language: language) { await progress(0.5 + $0 / 2) }
+                return merge(you: mine, them: theirs)
+            } catch is Unsupported {}
         }
-        return Transcript(segments: segments.sorted { $0.start < $1.start })
+        return nil
     }
+
+    /// Both sides in the order they were said.
+    static func merge(you: [Transcript.Segment], them: [Transcript.Segment]) -> Transcript {
+        let mine = you.map { var segment = $0; segment.speaker = "you"; return segment }
+        return Transcript(segments: (mine + numbered(them, alone: "them")).sorted { $0.start < $1.start })
+    }
+
+    /// The service's labels ("A", "SPEAKER_00"…) as "1", "2"… in the order the voices first speak.
+    /// A single voice is `alone`.
+    static func numbered(_ segments: [Transcript.Segment], alone: String?) -> [Transcript.Segment] {
+        var voices: [String] = []
+        for label in segments.compactMap(\.speaker) where !voices.contains(label) { voices.append(label) }
+        return segments.map { segment in
+            var segment = segment
+            let number = segment.speaker.flatMap { voices.firstIndex(of: $0) }.map { String($0 + 1) }
+            segment.speaker = voices.count > 1 ? number ?? alone : alone
+            return segment
+        }
+    }
+
+    /// What a request asks for: phrases with who said them (`diarized_json`, OpenAI's dialect for
+    /// it), phrases with times (`verbose_json`), or text (`json`).
+    private enum Format: String { case diarized = "diarized_json", timed = "verbose_json", text = "json" }
 
     /// Long recordings are split into 10-minute pieces to stay under the
     /// 25 MB / duration limits most providers enforce.
     private static let chunk: Double = 600
 
-    /// Each piece's phrases, timed from the start of the piece; untimed, a piece is one phrase.
+    /// The phrases of `audio`, timed from the start of the call; as text, a piece is one phrase.
     /// Off the main thread: each piece is read whole into the upload.
     @concurrent private static func pieces(
-        of audio: URL, timed: Bool, service: TranscriptionService, apiKey: String?, language: String?,
+        of audio: URL, as format: Format, service: TranscriptionService, apiKey: String?, language: String?,
         progress: @Sendable (Double) async -> Void
-    ) async throws -> [[Transcript.Segment]] {
+    ) async throws -> [Transcript.Segment] {
         let asset = AVURLAsset(url: audio)
         let duration = try await asset.load(.duration).seconds
-        var phrases: [[Transcript.Segment]] = []
+        // Voices keep their labels only within one request, so a call to diarize goes whole: to a
+        // server on this Mac at any length, to a cloud service only when it's one piece anyway.
+        if format == .diarized, duration > chunk, !service.isLocal { throw Unsupported() }
+        let length = format == .diarized ? duration : chunk
+        var phrases: [Transcript.Segment] = []
         var start: Double = 0
         repeat {
             await progress(start / max(duration, 1))
             let piece: URL
-            if duration <= chunk {
+            if duration <= length {
                 piece = audio
             } else {
                 piece = FileManager.default.temporaryDirectory.appending(path: "reprise-\(UUID().uuidString).m4a")
@@ -151,25 +194,31 @@ nonisolated enum Transcriber {
                     throw Failure("Couldn't prepare the audio for upload.")
                 }
                 export.timeRange = CMTimeRange(start: CMTime(seconds: start, preferredTimescale: 600),
-                                               duration: CMTime(seconds: min(chunk, duration - start), preferredTimescale: 600))
+                                               duration: CMTime(seconds: min(length, duration - start), preferredTimescale: 600))
                 try await export.export(to: piece, as: .m4a)
             }
             defer { if piece != audio { try? FileManager.default.removeItem(at: piece) } }
             // The tail of the previous piece keeps names and spelling consistent across chunks.
-            let text = phrases.joined().map(\.text).joined(separator: " ")
-            phrases.append(try await upload(piece, timed: timed, service: service, apiKey: apiKey, language: language, prompt: String(text.suffix(400))))
-            start += chunk
+            let text = phrases.map(\.text).joined(separator: " ")
+            let said = try await upload(piece, as: format, seconds: min(length, duration - start), service: service,
+                                        apiKey: apiKey, language: language, prompt: String(text.suffix(400)))
+            // To the millisecond: 600 + 12.34 would be 612.3399999999999 in the file.
+            let time = { (($0 + start) * 1000).rounded() / 1000 }
+            phrases += said.map { var segment = $0; segment.start = time($0.start); segment.end = time($0.end); return segment }
+            start += length
         } while start < duration
         await progress(1)
         return phrases
     }
 
-    private static func upload(_ file: URL, timed: Bool, service: TranscriptionService, apiKey: String?, language: String?, prompt: String) async throws -> [Transcript.Segment] {
+    private static func upload(
+        _ file: URL, as format: Format, seconds: Double, service: TranscriptionService, apiKey: String?, language: String?, prompt: String
+    ) async throws -> [Transcript.Segment] {
         guard let url = URL(string: service.baseURL)?.appending(path: "audio/transcriptions") else {
             throw Failure("The server address isn't a valid URL.")
         }
         let boundary = "reprise-\(UUID().uuidString)"
-        var request = URLRequest(url: url, timeoutInterval: 900)
+        var request = URLRequest(url: url, timeoutInterval: max(900, seconds)) // a whole call to a server on this Mac
         request.httpMethod = "POST"
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         if let apiKey, !apiKey.isEmpty { request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization") }
@@ -179,7 +228,8 @@ nonisolated enum Transcriber {
             body.append(Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"\(name)\"\r\n\r\n\(value)\r\n".utf8))
         }
         field("model", service.model)
-        field("response_format", timed ? "verbose_json" : "json")
+        field("response_format", format.rawValue)
+        if format == .diarized { field("chunking_strategy", "auto") } // OpenAI wants it past 30 seconds
         if let language, !language.isEmpty { field("language", language) }
         if !prompt.isEmpty { field("prompt", prompt) }
         body.append(Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"file\"; filename=\"audio.m4a\"\r\nContent-Type: audio/mp4\r\n\r\n".utf8))
@@ -189,24 +239,24 @@ nonisolated enum Transcriber {
         let (data, response) = try await URLSession.shared.upload(for: request, from: body)
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         guard (200..<300).contains(status) else {
-            // A service that can't time its text turns `verbose_json` down as a bad request.
-            if timed, [400, 422].contains(status) { throw Untimed() }
+            // A service that can't time its text or tell voices apart turns the format down as a bad request.
+            if format != .text, [400, 422].contains(status) { throw Unsupported() }
             let message = (try? JSONDecoder().decode(ErrorBody.self, from: data))?.error.message
                 ?? String(data: data, encoding: .utf8)?.prefix(300).description
             throw Failure("The service answered \(status): \(message ?? String(localized: "no details")).")
         }
         let segments: [Transcript.Segment]
-        if timed {
-            guard let answer = try? JSONDecoder().decode(Transcript.self, from: data) else { throw Untimed() } // without `segments`
-            segments = answer.segments
-        } else {
+        if format == .text {
             segments = [.init(start: 0, end: 0, text: try JSONDecoder().decode(TextBody.self, from: data).text)]
+        } else {
+            guard let answer = try? JSONDecoder().decode(Transcript.self, from: data) else { throw Unsupported() } // without `segments`
+            segments = answer.segments
         }
-        return segments.map { .init(start: $0.start, end: $0.end, text: $0.text.trimmingCharacters(in: .whitespacesAndNewlines)) }
+        return segments.map { var segment = $0; segment.text = $0.text.trimmingCharacters(in: .whitespacesAndNewlines); return segment }
             .filter { !$0.text.isEmpty }
     }
 
-    private struct Untimed: Error {}
+    private struct Unsupported: Error {}
     private struct TextBody: Decodable { let text: String }
     private struct ErrorBody: Decodable { struct Inner: Decodable { let message: String }; let error: Inner }
 }
