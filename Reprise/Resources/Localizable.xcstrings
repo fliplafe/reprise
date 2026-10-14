@@ -950,6 +950,16 @@
         }
       }
     },
+    "Others" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Собеседники"
+          }
+        }
+      }
+    },
     "Pause" : {
       "localizations" : {
         "ru" : {
@@ -1832,6 +1842,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Вчера"
+          }
+        }
+      }
+    },
+    "You" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вы"
           }
         }
       }

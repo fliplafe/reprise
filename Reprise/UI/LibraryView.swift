@@ -206,7 +206,7 @@ private struct RecordingDetail: View {
                         PlayerCard(player: player, waveformSource: recording.audioURL, marks: recording.marks ?? [])
                             .tint(.primary)
                     }
-                    TranscriptSection(recording: recording, model: model)
+                    TranscriptSection(recording: recording, model: model, player: player)
                 }
             }
             .padding(32)
@@ -556,6 +556,7 @@ nonisolated enum Waveform {
 private struct TranscriptSection: View {
     let recording: Recording
     let model: AppModel
+    let player: Player?
     @Environment(\.openSettings) private var openSettings
 
     var body: some View {
@@ -575,6 +576,8 @@ private struct TranscriptSection: View {
             Group {
                 if let progress = model.transcribing[recording.id] {
                     ProgressView("Transcribing…", value: progress)
+                } else if let segments = model.store.segments(of: recording) {
+                    Phrases(segments: segments, player: player)
                 } else if let text = model.store.transcript(of: recording) {
                     Text(text)
                         .textSelection(.enabled)
@@ -608,6 +611,31 @@ private struct TranscriptSection: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(.background.secondary, in: .rect(cornerRadius: 22))
             .animation(.smooth, value: model.transcribing[recording.id] == nil)
+        }
+    }
+}
+
+/// `transcript.json`: who said what, each phrase a click away, like the flags over the wave.
+private struct Phrases: View {
+    let segments: [Transcript.Segment]
+    let player: Player?
+
+    var body: some View {
+        LazyVStack(alignment: .leading, spacing: 5) {
+            ForEach(segments.indices, id: \.self) { i in
+                let segment = segments[i]
+                if i == 0 || segments[i - 1].speaker != segment.speaker { // named where the speaker changes
+                    Text(Transcript.name(of: segment.speaker))
+                        .font(.headline)
+                        .padding(.top, i == 0 ? 0 : 10)
+                }
+                Button { player?.seek(to: segment.start) } label: {
+                    Text(segment.text).frame(maxWidth: .infinity, alignment: .leading).contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .pointerStyle(.link)
+                .help(segment.start.clock)
+            }
         }
     }
 }

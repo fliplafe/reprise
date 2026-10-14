@@ -474,12 +474,20 @@ enum IslandState: Equatable {
         transcriptionErrors[recording.id] = nil
         let apiKey = TranscriptionSettings.apiKey
         let language = UserDefaults.standard.string(forKey: TranscriptionSettings.languageKey)
+        let report: @Sendable (Double) async -> Void = { value in await MainActor.run { self.transcribing[recording.id] = value } }
+        let sides = recording.tracks.map(\.final)
         Task {
             do {
-                let text = try await Transcriber.transcribe(recording.audioURL, service: service, apiKey: apiKey, language: language) { value in
-                    await MainActor.run { self.transcribing[recording.id] = value }
+                // With each side in a file of its own, the transcript knows who said what, and when.
+                if sides.allSatisfy({ FileManager.default.fileExists(atPath: $0.path) }),
+                   let transcript = try await Transcriber.transcribe(you: sides[0], them: sides[1], service: service, apiKey: apiKey, language: language, progress: report) {
+                    try JSONEncoder().encode(transcript).write(to: recording.segmentsURL, options: .atomic)
+                    try transcript.text.write(to: recording.transcriptURL, atomically: true, encoding: .utf8)
+                } else {
+                    let text = try await Transcriber.transcribe(recording.audioURL, service: service, apiKey: apiKey, language: language, progress: report)
+                    try? FileManager.default.removeItem(at: recording.segmentsURL) // an earlier one would no longer match the text
+                    try text.write(to: recording.transcriptURL, atomically: true, encoding: .utf8)
                 }
-                try text.write(to: recording.transcriptURL, atomically: true, encoding: .utf8)
             } catch {
                 transcriptionErrors[recording.id] = error.localizedDescription
             }

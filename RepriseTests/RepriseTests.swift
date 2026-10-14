@@ -386,3 +386,19 @@ struct UpdaterTests {
         #expect(title(at: 714, [event("Long", from: 540, to: 780), review]) == "Review") // the one that began last
     }
 }
+
+struct TranscriptTests {
+    @Test func mergesSidesByTimeFromTheStartOfTheCall() {
+        let phrase = { (start: Double, text: String) in Transcript.Segment(start: start, end: start + 2, text: text) }
+        // Each side's second piece starts 10 minutes in; its times count from there.
+        let merged = Transcriber.merge(you: [[phrase(1, "Hi"), phrase(8, "So")], [phrase(12.34, "Bye")]],
+                                       them: [[phrase(3, "Hello")], [phrase(0.5, "Later")]])
+        #expect(merged.segments == [
+            .init(speaker: "you", start: 1, end: 3, text: "Hi"),
+            .init(speaker: "them", start: 3, end: 5, text: "Hello"),
+            .init(speaker: "you", start: 8, end: 10, text: "So"),
+            .init(speaker: "them", start: 600.5, end: 602.5, text: "Later"),
+            .init(speaker: "you", start: 612.34, end: 614.34, text: "Bye"),
+        ])
+    }
+}

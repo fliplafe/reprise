@@ -3,7 +3,7 @@ import AppKit
 import EventKit
 
 /// One recorded call. Lives in its own folder:
-/// `~/Movies/Reprise/<id>/{recording.json, audio.m4a, you.m4a, them.m4a, screen.mov, transcript.txt}`
+/// `~/Movies/Reprise/<id>/{recording.json, audio.m4a, you.m4a, them.m4a, screen.mov, transcript.txt, transcript.json}`
 /// While recording, audio goes to `audio.aac` (ADTS), which stays playable even if the app is
 /// killed mid-call; it's repackaged into `audio.m4a` when the recording stops.
 struct Recording: Codable, Identifiable, Equatable {
@@ -30,6 +30,8 @@ struct Recording: Codable, Identifiable, Equatable {
     }
     var videoURL: URL { folder.appending(path: "screen.mov") }
     var transcriptURL: URL { folder.appending(path: "transcript.txt") }
+    /// The transcript phrase by phrase, with who said it and when: only from separate tracks.
+    var segmentsURL: URL { folder.appending(path: "transcript.json") }
     // ponytail: a call trashed in Finder keeps its clones' space until macOS clears the temporary
     // folder (3 days unused). Clear this folder for calls gone at reload if that's too late.
     /// The clones Share and dragging out hand over under the title. Trashing the call removes them.
@@ -72,11 +74,13 @@ enum CalendarEvents {
     private(set) var recordings: [Recording] = []
     /// Read once, not on every keystroke of a search. `nil` inside: there's no transcript.
     @ObservationIgnored private var transcripts: [Recording.ID: String?] = [:]
+    @ObservationIgnored private var segments: [Recording.ID: [Transcript.Segment]?] = [:]
 
     init() { reload() }
 
     func reload() {
         transcripts.removeAll()
+        segments.removeAll()
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         let folders = (try? FileManager.default.contentsOfDirectory(at: Self.root, includingPropertiesForKeys: nil)) ?? []
@@ -115,8 +119,16 @@ enum CalendarEvents {
         return text
     }
 
+    func segments(of recording: Recording) -> [Transcript.Segment]? {
+        if let cached = segments[recording.id] { return cached }
+        let read = try? JSONDecoder().decode(Transcript.self, from: Data(contentsOf: recording.segmentsURL)).segments
+        segments[recording.id] = read
+        return read
+    }
+
     func save(_ recording: Recording) {
         transcripts.removeValue(forKey: recording.id) // saved after a transcript is written
+        segments.removeValue(forKey: recording.id)
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
