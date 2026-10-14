@@ -565,6 +565,11 @@ private struct TranscriptSection: View {
                 Text("Transcript").font(.title3.bold())
                 Spacer()
                 if let text = model.store.transcript(of: recording) {
+                    // After a better service or model; the old text stays until the new one is written.
+                    if TranscriptionSettings.service != nil, model.transcribing[recording.id] == nil {
+                        Button("Transcribe Again", systemImage: "arrow.clockwise") { model.transcribe(recording) }
+                            .buttonStyle(.glass)
+                    }
                     Button("Copy", systemImage: "doc.on.doc") {
                         NSPasteboard.general.clearContents()
                         NSPasteboard.general.setString(text, forType: .string)
@@ -573,7 +578,12 @@ private struct TranscriptSection: View {
                 }
             }
 
-            Group {
+            VStack(alignment: .leading, spacing: 10) {
+                if let error = model.transcriptionErrors[recording.id] { // over the old text, if it was a second try
+                    Label(error, systemImage: "exclamationmark.triangle.fill")
+                        .symbolRenderingMode(.multicolor)
+                        .foregroundStyle(.secondary)
+                }
                 if let progress = model.transcribing[recording.id] {
                     ProgressView("Transcribing…", value: progress)
                 } else if let segments = model.store.segments(of: recording) {
@@ -584,16 +594,9 @@ private struct TranscriptSection: View {
                         .lineSpacing(5)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 } else if TranscriptionSettings.service != nil {
-                    VStack(alignment: .leading, spacing: 10) {
-                        if let error = model.transcriptionErrors[recording.id] {
-                            Label(error, systemImage: "exclamationmark.triangle.fill")
-                                .symbolRenderingMode(.multicolor)
-                                .foregroundStyle(.secondary)
-                        }
-                        Button("Transcribe", systemImage: "text.bubble") { model.transcribe(recording) }
-                            .buttonStyle(.glassProminent)
-                            .disabled(model.isLive(recording))
-                    }
+                    Button("Transcribe", systemImage: "text.bubble") { model.transcribe(recording) }
+                        .buttonStyle(.glassProminent)
+                        .disabled(model.isLive(recording))
                 } else {
                     HStack {
                         Text("Connect a transcription service to turn calls into text.")

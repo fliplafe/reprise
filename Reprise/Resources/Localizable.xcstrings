@@ -1706,6 +1706,16 @@
         }
       }
     },
+    "Transcribe Again" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Расшифровать заново"
+          }
+        }
+      }
+    },
     "Transcribe calls automatically" : {
       "localizations" : {
         "ru" : {
