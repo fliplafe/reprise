@@ -1160,6 +1160,26 @@
         }
       }
     },
+    "Refrain (this Mac)" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Refrain (этот Mac)"
+          }
+        }
+      }
+    },
+    "Refrain is running on this Mac" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Refrain запущен на этом Mac"
+          }
+        }
+      }
+    },
     "Relaunch" : {
       "localizations" : {
         "ru" : {
@@ -1192,16 +1212,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Доступна версия Reprise %@"
-          }
-        }
-      }
-    },
-    "Reprise doesn't transcribe on the Mac yet. It sends the audio to the service you choose. Any OpenAI-compatible service works, including a Whisper server on your own Mac, so the audio never leaves it." : {
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reprise пока не расшифровывает звук на Mac, а отправляет его выбранному сервису. Подойдёт любой OpenAI-совместимый сервис, в том числе сервер Whisper на вашем же Mac — тогда звук его не покидает."
           }
         }
       }
@@ -1252,6 +1262,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Reprise перезапустится, когда закончит."
+          }
+        }
+      }
+    },
+    "Reprise sends the audio to the service you choose. [Refrain](https://github.com/nikiomori/Refrain) transcribes it on this Mac, so the audio never leaves it; any other OpenAI-compatible service works too." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reprise отправляет звук выбранному сервису. [Refrain](https://github.com/nikiomori/Refrain) расшифровывает его на этом Mac, и звук никуда не уходит. Подойдёт и любой другой OpenAI-совместимый сервис."
           }
         }
       }
@@ -1732,6 +1752,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Обновления"
+          }
+        }
+      }
+    },
+    "Use It" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключить"
           }
         }
       }

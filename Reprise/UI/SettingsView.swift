@@ -299,6 +299,7 @@ private struct TranscriptionSettingsView: View {
     @AppStorage(TranscriptionSettings.languageKey) private var language = ""
     @AppStorage(TranscriptionSettings.autoKey) private var auto = false
     @State private var apiKey = TranscriptionSettings.apiKey ?? ""
+    @State private var refrainRunning = false
 
     /// Two-letter codes, which is what Whisper-style services take, named in the user's language.
     private static let languages = Locale.LanguageCode.isoLanguageCodes
@@ -316,8 +317,18 @@ private struct TranscriptionSettingsView: View {
                     Divider()
                     Text("Custom").tag("Custom")
                 }
+                if refrainRunning, baseURL != TranscriptionService.refrain.baseURL {
+                    HStack {
+                        Text("Refrain is running on this Mac")
+                        Spacer()
+                        Button("Use It") {
+                            baseURL = TranscriptionService.refrain.baseURL
+                            model = TranscriptionService.refrain.model
+                        }
+                    }
+                }
             } footer: {
-                Text("Reprise doesn't transcribe on the Mac yet. It sends the audio to the service you choose. Any OpenAI-compatible service works, including a Whisper server on your own Mac, so the audio never leaves it.")
+                Text("Reprise sends the audio to the service you choose. [Refrain](https://github.com/nikiomori/Refrain) transcribes it on this Mac, so the audio never leaves it; any other OpenAI-compatible service works too.")
                     .foregroundStyle(.secondary)
             }
             if !baseURL.isEmpty {
@@ -345,6 +356,7 @@ private struct TranscriptionSettingsView: View {
             }
         }
         .formStyle(.grouped)
+        .task { refrainRunning = await TranscriptionService.refrainIsRunning() }
     }
 
     private var preset: Binding<String> {

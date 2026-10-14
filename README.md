@@ -56,7 +56,7 @@ MIT, no paid version, no account. A call recorder needs your trust, and trust is
 - Stops when the call ends.
 - Keeps every call in a library: play it, jump to its marks, search titles and transcripts, share it, drag it into Mail or Finder.
 - Hands each saved call to a shortcut of your choice, to move the files, run a script on them, or send them on.
-- Optionally sends a call to a transcription service you choose, including one running on your own Mac.
+- Optionally sends a call to a transcription service you choose, including [Refrain](https://github.com/nikiomori/Refrain), which transcribes on your own Mac.
 - Speaks English and Russian.
 
 <picture>
@@ -92,12 +92,13 @@ Optional. Reprise sends the audio, in 10-minute parts, to any service with the O
 
 | Service | Model | About 1 hour |
 |---|---|---|
+| [Refrain](https://github.com/nikiomori/Refrain), on this Mac | `auto` | Free |
 | Groq | `whisper-large-v3-turbo` | $0.04 |
 | Mistral | `voxtral-mini-latest` | $0.18 |
 | OpenAI | `gpt-4o-transcribe` | $0.36 |
 | A local server: [speaches](https://github.com/speaches-ai/speaches), WhisperKit, LocalAI, whisper.cpp | Your choice | Free |
 
-A cloud service receives the audio of your call. To keep it on your Mac, use a local server.
+A cloud service receives the audio of your call. To keep it on your Mac, use Refrain or another local server. When Refrain is running, **Settings > Transcription** offers it.
 
 ## Files
 

@@ -2,17 +2,32 @@ import AVFoundation
 import Security
 
 /// Any service that speaks the OpenAI `POST /audio/transcriptions` dialect:
-/// OpenAI, Groq, Mistral, or a local whisper server (speaches, whisper.cpp, LocalAI…).
+/// Refrain, OpenAI, Groq, Mistral, or a local whisper server (speaches, whisper.cpp, LocalAI…).
 nonisolated struct TranscriptionService: Sendable {
     var baseURL: String
     var model: String
 
+    /// Refrain transcribes on this Mac's Neural Engine and picks the model itself
+    /// (github.com/nikiomori/Refrain).
+    static let refrain = TranscriptionService(baseURL: "http://127.0.0.1:8178/v1", model: "auto")
+
     static let presets: [(name: String, service: TranscriptionService)] = [
+        (String(localized: "Refrain (this Mac)"), refrain),
         ("OpenAI", .init(baseURL: "https://api.openai.com/v1", model: "gpt-4o-transcribe")),
         ("Groq", .init(baseURL: "https://api.groq.com/openai/v1", model: "whisper-large-v3-turbo")),
         ("Mistral", .init(baseURL: "https://api.mistral.ai/v1", model: "voxtral-mini-latest")),
         (String(localized: "Local server"), .init(baseURL: "http://localhost:8000/v1", model: "Systran/faster-whisper-large-v3")),
     ]
+
+    /// Whether Refrain answers on this Mac, for Settings to offer it. A second at most: it's
+    /// local or it isn't there.
+    static func refrainIsRunning() async -> Bool {
+        guard let url = URL(string: refrain.baseURL)?.appending(path: "models"),
+              let (data, response) = try? await URLSession.shared.data(for: URLRequest(url: url, timeoutInterval: 1)),
+              (response as? HTTPURLResponse)?.statusCode == 200
+        else { return false }
+        return String(decoding: data, as: UTF8.self).contains(#""owned_by":"refrain""#)
+    }
 }
 
 /// Transcription settings, persisted in UserDefaults (API key in the Keychain).
