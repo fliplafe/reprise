@@ -131,12 +131,22 @@ nonisolated enum Transcriber {
         you: URL, them: URL, service: TranscriptionService, apiKey: String?, language: String?,
         progress: @Sendable (Double) async -> Void
     ) async throws -> Transcript? {
-        for format in [Format.diarized, .timed] {
+        // The others may be several voices; you are one, so yours needs only times, unless the
+        // service times its text only as it tells voices apart (gpt-4o-transcribe-diarize).
+        guard let theirs = try await phrases(of: them, as: [.diarized, .timed], service: service, apiKey: apiKey, language: language, progress: { await progress($0 / 2) }),
+              let mine = try await phrases(of: you, as: [.timed, .diarized], service: service, apiKey: apiKey, language: language, progress: { await progress(0.5 + $0 / 2) })
+        else { return nil }
+        return merge(you: mine, them: theirs)
+    }
+
+    /// The phrases of `audio` in the first of `formats` the service gives; `nil` when it gives none.
+    private static func phrases(
+        of audio: URL, as formats: [Format], service: TranscriptionService, apiKey: String?, language: String?,
+        progress: @Sendable (Double) async -> Void
+    ) async throws -> [Transcript.Segment]? {
+        for format in formats {
             do {
-                // Theirs first: whether the service tells voices apart is found out where it matters.
-                let theirs = try await pieces(of: them, as: format, service: service, apiKey: apiKey, language: language) { await progress($0 / 2) }
-                let mine = try await pieces(of: you, as: format, service: service, apiKey: apiKey, language: language) { await progress(0.5 + $0 / 2) }
-                return merge(you: mine, them: theirs)
+                return try await pieces(of: audio, as: format, service: service, apiKey: apiKey, language: language, progress: progress)
             } catch is Unsupported {}
         }
         return nil
