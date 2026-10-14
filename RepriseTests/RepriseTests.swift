@@ -316,12 +316,14 @@ struct UpdaterTests {
         recording.title = "Standup"
         recording.duration = 95
         recording.marks = [62]
+        recording.participants = ["Anna", "Boris"]
         let segments = [("you", 1.0, "Hi"), ("you", 3, "all"), ("1", 61, "Ship it")].map { Transcript.Segment(speaker: $0, start: $1, end: $1 + 1, text: $2) }
         try JSONEncoder().encode(Transcript(segments: segments)).write(to: recording.segmentsURL)
         store.save(recording)
         let brief = store.brief(of: recording)
         #expect(brief.hasPrefix("# Standup\n"))
         #expect(brief.contains("Files: `\(recording.folder.path)`") && brief.contains("Marked moments: 1:02"))
+        #expect(brief.contains("Participants: Anna and Boris"))
         #expect(brief.hasSuffix("## Transcript\n\n[0:01] You: Hi all\n\n[1:01] Speaker 1: Ship it"))
     }
 

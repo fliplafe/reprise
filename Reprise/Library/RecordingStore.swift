@@ -18,6 +18,8 @@ struct Recording: Codable, Identifiable, Equatable {
     var movieStart: TimeInterval?
     /// Moments marked during the call, in seconds into the audio (and the movie, which has all of it).
     var marks: [TimeInterval]?
+    /// Who else was invited to the calendar event the call belongs to.
+    var participants: [String]?
 
     var folder: URL { RecordingStore.root.appending(path: id, directoryHint: .isDirectory) }
     var finalAudioURL: URL { folder.appending(path: "audio.m4a") }
@@ -48,10 +50,17 @@ enum CalendarEvents {
 
     static func requestAccess() async -> Bool { (try? await store.requestFullAccessToEvents()) ?? false }
 
-    static func title(at date: Date) -> String? {
+    static func event(at date: Date) -> EKEvent? {
         guard UserDefaults.standard.bool(forKey: key), isAllowed else { return nil }
         let events = store.events(matching: store.predicateForEvents(withStart: date.addingTimeInterval(-12 * 3600), end: date + early, calendars: nil))
-        return event(at: date, among: events)?.title.flatMap { $0.isEmpty ? nil : $0 }
+        return event(at: date, among: events)
+    }
+
+    /// Everyone invited but you and the rooms: by name, or by address when the invitation has no name.
+    static func participants(of event: EKEvent) -> [String] {
+        (event.attendees ?? [])
+            .filter { !$0.isCurrentUser && ![.room, .resource].contains($0.participantType) }
+            .compactMap { $0.name ?? $0.url.absoluteString.split(separator: "mailto:").last.map(String.init) }
     }
 
     /// A call joined a few minutes early belongs to the event about to start.
@@ -108,8 +117,11 @@ enum CalendarEvents {
                 id = "\(name) \(copy)"
             }
         }
-        let title = CalendarEvents.title(at: date) ?? app.map { String(localized: "\($0.name) call") } ?? String(localized: "Recording")
-        return Recording(id: id, title: title, app: app, startedAt: date, duration: 0, hasVideo: false)
+        let event = CalendarEvents.event(at: date)
+        let title = event?.title.flatMap { $0.isEmpty ? nil : $0 } ?? app.map { String(localized: "\($0.name) call") } ?? String(localized: "Recording")
+        let participants = event.map(CalendarEvents.participants)
+        return Recording(id: id, title: title, app: app, startedAt: date, duration: 0, hasVideo: false,
+                         participants: participants?.isEmpty == false ? participants : nil)
     }
 
     func transcript(of recording: Recording) -> String? {
@@ -135,6 +147,9 @@ enum CalendarEvents {
             [recording.app?.name ?? String(localized: "Recording"), recording.startedAt.formatted(date: .long, time: .shortened), recording.duration.clock].joined(separator: " · "),
             String(localized: "Files: `\(recording.folder.path)`"),
         ]
+        if let participants = recording.participants {
+            lines.append(String(localized: "Participants: \(participants.formatted(.list(type: .and)))"))
+        }
         if let marks = recording.marks, !marks.isEmpty {
             lines.append(String(localized: "Marked moments: \(marks.map(\.clock).joined(separator: ", "))"))
         }

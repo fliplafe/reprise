@@ -92,7 +92,8 @@ struct LibraryView: View {
     private var sections: [(title: String, recordings: [Recording])] {
         let calendar = Calendar.current
         let matches = model.store.recordings.filter {
-            search.isEmpty || $0.title.localizedStandardContains(search) || (model.store.transcript(of: $0)?.localizedStandardContains(search) ?? false)
+            search.isEmpty || $0.title.localizedStandardContains(search) || ($0.participants ?? []).contains { $0.localizedStandardContains(search) }
+                || (model.store.transcript(of: $0)?.localizedStandardContains(search) ?? false)
         }
         let grouped = Dictionary(grouping: matches) { calendar.startOfDay(for: $0.startedAt) }
         return grouped.keys.sorted(by: >).map { day in
@@ -263,6 +264,14 @@ private struct RecordingDetail: View {
                 }
                 Text([recording.app?.name ?? String(localized: "Recording"), recording.startedAt.formatted(date: .long, time: .shortened), model.isLive(recording) ? nil : recording.duration.clock].compactMap(\.self).joined(separator: " · "))
                     .foregroundStyle(.secondary)
+                if let participants = recording.participants {
+                    let everyone = participants.formatted(.list(type: .and))
+                    Label(everyone, systemImage: "person.2")
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .help(everyone)
+                        .accessibilityLabel(String(localized: "Participants: \(everyone)"))
+                }
             }
         }
     }
