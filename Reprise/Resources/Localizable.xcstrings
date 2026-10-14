@@ -2099,12 +2099,12 @@
         }
       }
     },
-    "You and the others, as you.m4a and them.m4a next to the call, to edit a podcast or an interview. Takes a little more power and disk space." : {
+    "You and the others, as you.m4a and them.m4a next to the call, to edit a podcast or an interview. Without headphones, what your microphone heard of the others is taken out of your file after the call. Takes a little more power and disk space." : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Вы и собеседники — в файлах you.m4a и them.m4a рядом со звонком, чтобы монтировать подкаст или интервью. Чуть больше нагрузки и места на диске."
+            "value" : "Вы и собеседники — в файлах you.m4a и them.m4a рядом со звонком, чтобы монтировать подкаст или интервью. Без наушников то, что ваш микрофон услышал от собеседников, после звонка убирается из вашего файла. Чуть больше нагрузки и места на диске."
           }
         }
       }

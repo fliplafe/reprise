@@ -28,6 +28,7 @@
 		AB50DEE52BBD9F8DFE9CEC9D /* ScreenRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DBD3826D223B00CA49B5672 /* ScreenRecorder.swift */; };
 		AEBA9355CB7CB56FE35F41E7 /* DebugSnapshots.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6B032CD642845CDF71426E4 /* DebugSnapshots.swift */; };
 		AF00D98313B1887E57FD05D8 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 530209C8AB6693871B1104C6 /* WelcomeView.swift */; };
+		B961B9A11BA5F240D4C5D7C8 /* EchoCanceller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EDCD272D005FFDEB78D9C23 /* EchoCanceller.swift */; };
 		CA06D8BAA63E699164167FDC /* Island.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81C1FDC30EE7E8205BF02A6B /* Island.swift */; };
 		F10520BEB11D21149E39239A /* RecordControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0781C65648A5B23F50E5DDFD /* RecordControl.swift */; };
 		F4917861A14FCC528E83DED7 /* Transcriber.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC49C9C574B9EDCD3B3B6CA0 /* Transcriber.swift */; };
@@ -86,6 +87,7 @@
 		892A0B78D5E7B007506D76FF /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		8B74C2926E335B3CA694E824 /* AppShortcuts.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = AppShortcuts.xcstrings; sourceTree = "<group>"; };
 		8E81ABB7728C79F330920819 /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = AppIcon.icon; sourceTree = "<group>"; };
+		8EDCD272D005FFDEB78D9C23 /* EchoCanceller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EchoCanceller.swift; sourceTree = "<group>"; };
 		91D5314F710C5FABF64E3E34 /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
 		930066FC9B07075718F9F50C /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		99DE1BB9800605B201A7E21C /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
@@ -174,6 +176,7 @@
 			children = (
 				B5EA41968814ACF5C3D8CFAC /* AudioRecorder.swift */,
 				CCB88BA6CED02E9A036994DC /* CoreAudio.swift */,
+				8EDCD272D005FFDEB78D9C23 /* EchoCanceller.swift */,
 				B9043239B474E12ECE71F5FD /* MeetingDetector.swift */,
 				4DBD3826D223B00CA49B5672 /* ScreenRecorder.swift */,
 			);
@@ -394,6 +397,7 @@
 				823A46C262162C27111ED865 /* AudioRecorder.swift in Sources */,
 				F8BC91208B0BF63DB91862A3 /* CoreAudio.swift in Sources */,
 				AEBA9355CB7CB56FE35F41E7 /* DebugSnapshots.swift in Sources */,
+				B961B9A11BA5F240D4C5D7C8 /* EchoCanceller.swift in Sources */,
 				143221A29DFBC07423A16777 /* Intents.swift in Sources */,
 				CA06D8BAA63E699164167FDC /* Island.swift in Sources */,
 				796A40F671A89D120CEDA539 /* LibraryView.swift in Sources */,

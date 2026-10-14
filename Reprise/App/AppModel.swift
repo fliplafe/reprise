@@ -354,10 +354,38 @@ enum IslandState: Equatable {
         case .prompt: break // the next call's prompt still waits for an answer
         default: show(.saved(recording), for: .seconds(5))
         }
-        if UserDefaults.standard.bool(forKey: TranscriptionSettings.autoKey), TranscriptionSettings.service != nil {
-            transcribe(recording, then: Shortcut.runAfterCall) // with its transcript
-        } else {
-            Shortcut.runAfterCall(recording)
+        // After the save, and not waited for by a quit: the call is safe, this only improves it.
+        cancelEcho(in: recording)
+        Task {
+            await echoes[recording.id]?.value // the transcript and the shortcut get your side clean
+            if UserDefaults.standard.bool(forKey: TranscriptionSettings.autoKey), TranscriptionSettings.service != nil {
+                transcribe(recording, then: Shortcut.runAfterCall) // with its transcript
+            } else {
+                Shortcut.runAfterCall(recording)
+            }
+        }
+    }
+
+    /// Your side being cleaned of the others' echo, by call.
+    @ObservationIgnored private var echoes: [Recording.ID: Task<Void, Never>] = [:]
+
+    // ponytail: a quit mid-cleaning leaves you-cleaned.m4a in the folder and your side as recorded;
+    // nothing cleans it again. Redo it at launch if that turns out to matter.
+    /// Takes the others' voices out of your side, where the microphone heard them from the speakers.
+    private func cancelEcho(in recording: Recording) {
+        let sides = recording.tracks.map(\.final)
+        guard sides.allSatisfy({ FileManager.default.fileExists(atPath: $0.path) }) else { return }
+        let id = recording.id
+        echoes[id] = Task {
+            let started = ContinuousClock.now
+            do {
+                if try await Task.detached(priority: .utility, operation: { try EchoCanceller.clean(sides[0], against: sides[1]) }).value {
+                    log.notice("Took the others' echo out of your side of \(id, privacy: .public) in \(ContinuousClock.now - started)")
+                }
+            } catch {
+                log.error("Couldn't clean your side of the echo: \(error.localizedDescription, privacy: .public)")
+            }
+            echoes[id] = nil
         }
     }
 
@@ -479,6 +507,7 @@ enum IslandState: Equatable {
         let report: @Sendable (Double) async -> Void = { value in await MainActor.run { self.transcribing[recording.id] = value } }
         let sides = recording.tracks.map(\.final)
         Task {
+            await echoes[recording.id]?.value // your side is being cleaned of the echo
             do {
                 // With each side in a file of its own, the transcript knows who said what, and when;
                 // without, only a service that tells voices apart does.

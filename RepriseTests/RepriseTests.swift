@@ -1,4 +1,5 @@
 import AVFoundation
+import Accelerate
 import AppIntents
 import CoreAudio
 import CoreSpotlight
@@ -476,5 +477,88 @@ struct TranscriptTests {
         let spotlight = CSSearchableItem(appEntity: CallEntity(recording, transcript: "Ship it"))
         #expect(spotlight.attributeSet.textContent == "Ship it")
         #expect(AppDelegate.call(fromSpotlight: spotlight.uniqueIdentifier) == recording.id) // a click on the result opens it
+    }
+}
+
+struct EchoCancellerTests {
+    let rate = 48_000
+
+    /// Like speech: voiced syllables, five a second, each at a pitch of its own, in the given
+    /// stretches of seconds. A sawtooth has a voice's harmonics, and AAC keeps them as it does a voice's.
+    private func voice(_ seed: UInt64, in stretches: [Range<Double>], length: Int) -> [Float] {
+        var state = seed
+        var samples = [Float](repeating: 0, count: length), phase: Double = 0, pitch: Double = 150, low: Float = 0
+        for i in 0..<length {
+            let t = Double(i) / Double(rate)
+            if i % (rate / 5) == 0 {
+                state = state &* 6364136223846793005 &+ 1442695040888963407
+                pitch = 100 + Double(state >> 40) / Double(1 << 24) * 150
+            }
+            phase = (phase + pitch / Double(rate)).truncatingRemainder(dividingBy: 1)
+            low = 0.8 * low + 0.2 * Float(2 * phase - 1)
+            guard stretches.contains(where: { $0.contains(t) }) else { continue }
+            let syllable = t.truncatingRemainder(dividingBy: 0.2) / 0.15
+            samples[i] = syllable < 1 ? 0.5 * low * Float(sin(.pi * syllable) * sin(.pi * syllable)) : 0
+        }
+        return samples
+    }
+
+    private func write(_ samples: [Float], to url: URL) throws {
+        let file = try AVAudioFile(forWriting: url, settings: AudioRecorder.fileSettings(rate: Double(rate)), commonFormat: .pcmFormatFloat32, interleaved: false)
+        let buffer = AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: AVAudioFrameCount(samples.count))!
+        buffer.frameLength = buffer.frameCapacity
+        samples.withUnsafeBufferPointer { buffer.floatChannelData![0].update(from: $0.baseAddress!, count: samples.count) }
+        try file.write(from: buffer)
+    }
+
+    private func read(_ url: URL) throws -> [Float] {
+        let file = try AVAudioFile(forReading: url)
+        let buffer = AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: AVAudioFrameCount(file.length))!
+        try file.read(into: buffer)
+        return Array(UnsafeBufferPointer(start: buffer.floatChannelData![0], count: Int(buffer.frameLength)))
+    }
+
+    private func energy(_ samples: [Float], from start: Double, to end: Double) -> Float {
+        vDSP.sumOfSquares(samples[Int(start * Double(rate))..<Int(end * Double(rate))])
+    }
+
+    /// Twenty seconds: they talk, then you, then both. Their sound comes back 25 ms later, with a
+    /// reflection: what a MacBook's microphone hears of its speakers.
+    private func call(echo: Bool) throws -> (you: URL, them: URL, near: [Float]) {
+        let folder = FileManager.default.temporaryDirectory.appending(path: "reprise-echo-\(UUID().uuidString)", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let length = 20 * rate
+        let far = voice(1, in: [0..<8, 14..<20], length: length), near = voice(2, in: [8..<20], length: length)
+        let delay = rate / 40
+        let mic = (0..<length).map { i in
+            near[i] + (echo && i >= delay + 96 ? 0.4 * far[i - delay] + 0.15 * far[i - delay - 96] : 0)
+        }
+        let you = folder.appending(path: "you.m4a"), them = folder.appending(path: "them.m4a")
+        try write(mic, to: you)
+        try write(far, to: them)
+        return (you, them, near)
+    }
+
+    @Test func takesTheirEchoOutOfYourSide() throws {
+        let (you, them, near) = try call(echo: true)
+        defer { try? FileManager.default.removeItem(at: you.deletingLastPathComponent()) }
+        let before = try read(you)
+        #expect(try EchoCanceller.lag(of: you, behind: them) == rate / 40)
+        #expect(try EchoCanceller.clean(you, against: them))
+        let after = try read(you)
+        #expect(after.count == before.count) // on the same timeline as the others and the transcript
+        // Once it has learned the echo path: their voice alone, at least 20 dB quieter (28 measured).
+        #expect(energy(before, from: 4, to: 8) > 100 * energy(after, from: 4, to: 8))
+        // Your voice alone stays as it was, to within 1% (0.2% measured).
+        let yours = vDSP.subtract(Array(after[8 * rate..<14 * rate]), Array(near[8 * rate..<14 * rate]))
+        #expect(vDSP.sumOfSquares(yours) < 0.01 * energy(near, from: 8, to: 14))
+    }
+
+    @Test func withHeadphonesYourSideStaysAsItIs() throws {
+        let (you, them, _) = try call(echo: false)
+        defer { try? FileManager.default.removeItem(at: you.deletingLastPathComponent()) }
+        let before = try Data(contentsOf: you)
+        #expect(try !EchoCanceller.clean(you, against: them))
+        #expect(try Data(contentsOf: you) == before)
     }
 }

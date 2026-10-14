@@ -93,7 +93,7 @@ private struct GeneralSettings: View {
                 }
                 Toggle(isOn: $separateTracks) {
                     Text("Also save each side in its own file")
-                    Text("You and the others, as you.m4a and them.m4a next to the call, to edit a podcast or an interview. Takes a little more power and disk space.")
+                    Text("You and the others, as you.m4a and them.m4a next to the call, to edit a podcast or an interview. Without headphones, what your microphone heard of the others is taken out of your file after the call. Takes a little more power and disk space.")
                 }
                 Toggle(isOn: Binding {
                     calendarTitles
