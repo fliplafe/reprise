@@ -493,6 +493,27 @@ enum IslandState: Equatable {
         undo?.setActionName("Move to Trash")
     }
 
+    /// Cuts the call down to `range`; Edit > Undo puts the call as it was back.
+    func trim(_ recording: Recording, to range: ClosedRange<TimeInterval>, undo: UndoManager?) async {
+        guard !isLive(recording), transcribing[recording.id] == nil else { return }
+        await echoes[recording.id]?.value // not under the echo canceller's feet
+        do {
+            let trashed = try await store.trim(recording, to: range)
+            log.notice("Trimmed \(recording.id, privacy: .public) to \(range.lowerBound)...\(range.upperBound)")
+            undo?.registerUndo(withTarget: self) { model in
+                let files = FileManager.default
+                guard (try? files.removeItem(at: recording.folder)) != nil, (try? files.moveItem(at: trashed, to: recording.folder)) != nil else { return }
+                try? files.removeItem(at: recording.copiesFolder)
+                model.store.save(recording)
+                model.selection = recording.id
+            }
+            undo?.setActionName(String(localized: "Trim"))
+        } catch {
+            log.error("Couldn't trim: \(error.localizedDescription, privacy: .public)")
+            show(.problem(String(localized: "Couldn't trim the call: \(error.localizedDescription)")), for: .seconds(6))
+        }
+    }
+
     /// Selected once `id` is trashed: the call after it, or the one before when it was the last, as in
     /// Mail and Voice Memos. While searching, the next match, not a call the search hides: ⌫ would trash that next.
     static func next(after id: Recording.ID, in list: [Recording.ID]) -> Recording.ID? {

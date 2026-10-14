@@ -323,6 +323,16 @@
         }
       }
     },
+    "Cancel" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отменить"
+          }
+        }
+      }
+    },
     "Change…" : {
       "localizations" : {
         "ru" : {
@@ -473,6 +483,16 @@
         }
       }
     },
+    "Couldn't trim the call: %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось обрезать звонок: %@"
+          }
+        }
+      }
+    },
     "Couldn't unpack the update." : {
       "localizations" : {
         "ru" : {
@@ -519,6 +539,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Длительность"
+          }
+        }
+      }
+    },
+    "End of the part" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Конец фрагмента"
           }
         }
       }
@@ -629,6 +659,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Вперёд на 15 секунд"
+          }
+        }
+      }
+    },
+    "From %@ to %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "From %1$@ to %2$@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "С %@ до %@"
           }
         }
       }
@@ -749,6 +795,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Присоединитесь к звонку, и Reprise предложит его записать."
+          }
+        }
+      }
+    },
+    "Keep only this part of the call. Edit › Undo puts the rest back." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Оставить только этот фрагмент звонка. Правка › Отменить вернёт остальное."
           }
         }
       }
@@ -1642,6 +1698,26 @@
         }
       }
     },
+    "Share" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поделиться"
+          }
+        }
+      }
+    },
+    "Share this part as a file of its own" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поделиться этим фрагментом отдельным файлом"
+          }
+        }
+      }
+    },
     "Share…" : {
       "localizations" : {
         "ru" : {
@@ -1718,6 +1794,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Начать запись"
+          }
+        }
+      }
+    },
+    "Start of the part" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Начало фрагмента"
           }
         }
       }
@@ -1988,6 +2074,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Расшифровка"
+          }
+        }
+      }
+    },
+    "Trim" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обрезать"
+          }
+        }
+      }
+    },
+    "Trim or Share a Part" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обрезать или поделиться фрагментом"
+          }
+        }
+      }
+    },
+    "Trim or share a part" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обрезать или поделиться фрагментом"
           }
         }
       }

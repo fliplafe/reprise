@@ -383,6 +383,47 @@ struct UpdaterTests {
         #expect(RecordingStore.resolve(bookmark) == nil)
     }
 
+    /// Cut to a second in the middle: the sound, the marks and the phrases with it, timed from the
+    /// cut; the call as it was in the Trash.
+    @Test func trimCutsEverythingAndKeepsTheCallInTheTrash() async throws {
+        var recording = try store.create(app: nil, at: .now)
+        defer { try? FileManager.default.removeItem(at: recording.folder) }
+        try twoSeconds(into: recording.finalAudioURL)
+        recording.duration = 2
+        recording.marks = [0.2, 1.2]
+        let segments = [("you", 0.1, "Before"), ("1", 0.9, "Inside"), ("you", 1.4, "Across")].map { Transcript.Segment(speaker: $0, start: $1, end: $1 + 0.3, text: $2) }
+        try JSONEncoder().encode(Transcript(segments: segments)).write(to: recording.segmentsURL)
+        store.save(recording)
+
+        let trashed = try await store.trim(recording, to: 0.5...1.5)
+        defer { try? FileManager.default.removeItem(at: trashed) }
+        let cut = try #require(store.recordings.first { $0.id == recording.id })
+        #expect(cut.duration == 1 && cut.marks == [0.7])
+        #expect(abs(try await AVURLAsset(url: cut.finalAudioURL).load(.duration).seconds - 1) < 0.05)
+        #expect(store.segments(of: cut)?.map(\.text) == ["Inside", "Across"])
+        #expect(store.segments(of: cut)?.map(\.start) == [0.4, 0.9] && store.segments(of: cut)?.last?.end == 1)
+        #expect(FileManager.default.fileExists(atPath: trashed.appending(path: "audio.m4a").path))
+    }
+
+    /// A part of the call, under its title and times, as long as asked.
+    @Test func clipIsThePartUnderItsTitle() async throws {
+        var recording = try store.create(app: nil, at: .now)
+        defer { try? FileManager.default.removeItem(at: recording.folder); try? FileManager.default.removeItem(at: recording.copiesFolder) }
+        try twoSeconds(into: recording.finalAudioURL)
+        recording.title = "Standup"
+        let clip = try await store.clip(of: recording, 0.5...1.5)
+        #expect(clip.lastPathComponent == "Standup 0.00–0.01.m4a")
+        #expect(abs(try await AVURLAsset(url: clip).load(.duration).seconds - 1) < 0.05)
+    }
+
+    private func twoSeconds(into url: URL) throws {
+        let file = try AVAudioFile(forWriting: url, settings: AudioRecorder.fileSettings(rate: 48_000), commonFormat: .pcmFormatFloat32, interleaved: false)
+        let sound = AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: 96_000)!
+        sound.frameLength = 96_000
+        for i in 0..<96_000 { sound.floatChannelData![0][i] = 0.3 * sin(Float(i) * 2 * .pi / 109) }
+        try file.write(from: sound)
+    }
+
     /// Trashed while searching: the next match is selected, not the next call in the whole library.
     @Test func trashingSelectsTheNextCallShown() {
         #expect(AppModel.next(after: "b", in: ["a", "b", "d"]) == "d") // "c" is hidden by the search

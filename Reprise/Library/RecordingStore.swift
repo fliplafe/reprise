@@ -128,7 +128,8 @@ enum CalendarEvents {
         segments.removeAll()
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        let folders = (try? FileManager.default.contentsOfDirectory(at: Self.root, includingPropertiesForKeys: nil)) ?? []
+        // Not hidden ones: a call being trimmed is put together in one.
+        let folders = (try? FileManager.default.contentsOfDirectory(at: Self.root, includingPropertiesForKeys: nil, options: .skipsHiddenFiles)) ?? []
         recordings = folders
             .compactMap { folder in
                 var recording = try? decoder.decode(Recording.self, from: Data(contentsOf: folder.appending(path: "recording.json")))
@@ -239,16 +240,95 @@ enum CalendarEvents {
     func save(_ recording: Recording) {
         transcripts.removeValue(forKey: recording.id) // saved after a transcript is written
         segments.removeValue(forKey: recording.id)
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        guard (try? encoder.encode(recording).write(to: recording.folder.appending(path: "recording.json"), options: .atomic)) != nil else { return }
+        guard (try? Self.write(recording, into: recording.folder)) != nil else { return }
         if let index = recordings.firstIndex(where: { $0.id == recording.id }) {
             recordings[index] = recording
         } else {
             recordings.insert(recording, at: recordings.firstIndex { $0.startedAt < recording.startedAt } ?? recordings.endIndex)
         }
         index(recording)
+    }
+
+    private static func write(_ recording: Recording, into folder: URL) throws {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(recording).write(to: folder.appending(path: "recording.json"), options: .atomic)
+    }
+
+    // MARK: Parts of a call
+
+    /// The part of the call within `range`, in seconds, as a file of its own under the title: the
+    /// movie when there is one, else the sound. Cut without re-encoding.
+    func clip(of recording: Recording, _ range: ClosedRange<TimeInterval>) async throws -> URL {
+        let source = recording.hasVideo ? recording.videoURL : recording.audioURL
+        let folder = recording.copiesFolder.appending(path: UUID().uuidString, directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        // "Standup 12.30–13.45": a colon would show as a slash in Finder.
+        let times = [range.lowerBound, range.upperBound].map { $0.clock.replacingOccurrences(of: ":", with: ".") }.joined(separator: "–")
+        let clip = folder.appending(path: "\(recording.title.replacingOccurrences(of: "/", with: "-")) \(times).\(source.pathExtension)")
+        try await Self.cut(source, to: range, into: clip)
+        return clip
+    }
+
+    /// Cuts the call down to `range`: each of its files, its marks and its transcript. The call as
+    /// it was goes to the Trash; returns where, for Undo.
+    func trim(_ recording: Recording, to range: ClosedRange<TimeInterval>) async throws -> URL {
+        let files = FileManager.default
+        let trimmed = Self.root.appending(path: ".\(recording.id) trimmed", directoryHint: .isDirectory) // hidden from the library
+        try? files.removeItem(at: trimmed)
+        try files.createDirectory(at: trimmed, withIntermediateDirectories: false)
+        var cut = recording
+        do {
+            for name in ["audio.m4a", "you.m4a", "them.m4a", "you.wav", "them.wav", "screen.mov"] {
+                let file = recording.folder.appending(path: name)
+                guard files.fileExists(atPath: file.path) else { continue }
+                try await Self.cut(file, to: range, into: trimmed.appending(path: name))
+            }
+            cut.duration = range.upperBound - range.lowerBound
+            cut.marks = recording.marks?.compactMap { range.contains($0) ? $0 - range.lowerBound : nil }
+            cut.movieStart = recording.movieStart.map { max(0, $0 - range.lowerBound) }
+            // The phrases within it, timed from its start. A transcript without times can't be cut:
+            // it stays with the call as it was, and the cut one can be transcribed again.
+            if let segments = segments(of: recording) {
+                let time = { (seconds: TimeInterval) in (seconds * 1000).rounded() / 1000 } // to the millisecond, as the transcriber writes them
+                let kept = segments.compactMap { segment -> Transcript.Segment? in
+                    guard segment.end > range.lowerBound, segment.start < range.upperBound else { return nil }
+                    var segment = segment
+                    (segment.start, segment.end) = (time(max(0, segment.start - range.lowerBound)), time(min(segment.end, range.upperBound) - range.lowerBound))
+                    return segment
+                }
+                try JSONEncoder().encode(Transcript(segments: kept)).write(to: trimmed.appending(path: "transcript.json"))
+                try Transcript(segments: kept).text.write(to: trimmed.appending(path: "transcript.txt"), atomically: true, encoding: .utf8)
+            }
+            try Self.write(cut, into: trimmed)
+        } catch {
+            try? files.removeItem(at: trimmed)
+            throw error
+        }
+        var trashed: NSURL?
+        do { try files.trashItem(at: recording.folder, resultingItemURL: &trashed) } catch { // a server's folder has no Trash
+            try? files.removeItem(at: trimmed)
+            throw error
+        }
+        try files.moveItem(at: trimmed, to: recording.folder)
+        try? files.removeItem(at: recording.copiesFolder) // clones of the files as they were
+        save(cut)
+        return trashed! as URL
+    }
+
+    nonisolated static func cut(_ source: URL, to range: ClosedRange<TimeInterval>, into destination: URL) async throws {
+        guard let export = AVAssetExportSession(asset: AVURLAsset(url: source), presetName: AVAssetExportPresetPassthrough) else {
+            throw CocoaError(.fileWriteUnknown)
+        }
+        export.timeRange = CMTimeRange(start: CMTime(seconds: range.lowerBound, preferredTimescale: 48_000),
+                                       end: CMTime(seconds: range.upperBound, preferredTimescale: 48_000))
+        let type: AVFileType = switch destination.pathExtension {
+        case "wav": .wav
+        case "mov": .mov
+        default: .m4a
+        }
+        try await export.export(to: destination, as: type)
     }
 
     /// Deletes the early capture of calls nobody chose to record (Reprise quit while it asked):

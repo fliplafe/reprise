@@ -208,7 +208,7 @@ private struct RecordingDetail: View {
                                     .clipShape(.rect(cornerRadius: 16))
                                     .shadow(color: .black.opacity(0.15), radius: 20, y: 10)
                             }
-                            PlayerCard(player: player, waveformSource: recording.audioURL, marks: recording.marks ?? [])
+                            PlayerCard(player: player, recording: recording, model: model)
                                 .tint(.primary)
                         }
                         TranscriptSection(recording: recording, model: model, player: player, search: search)
@@ -383,16 +383,74 @@ private struct LiveCard: View {
 
 private struct PlayerCard: View {
     let player: Player
-    let waveformSource: URL
-    let marks: [TimeInterval]
+    let recording: Recording
+    let model: AppModel
+    /// The part being trimmed or shared, while it is.
+    @State private var part: ClosedRange<TimeInterval>?
+    @Environment(\.undoManager) private var undoManager
+
+    private var marks: [TimeInterval] { recording.marks ?? [] }
 
     var body: some View {
         VStack(spacing: 10) {
             if !marks.isEmpty, player.duration > 0 {
                 Marks(marks: marks, player: player)
             }
-            WaveformScrubber(player: player, source: waveformSource)
+            WaveformScrubber(player: player, source: recording.audioURL)
                 .frame(height: 64)
+                .overlay {
+                    if let part = Binding($part) { PartFrame(part: part, duration: player.duration, marks: marks) }
+                }
+            if let part {
+                partBar(part)
+            } else {
+                controls
+            }
+        }
+        .padding(20)
+        .background(.background.secondary, in: .rect(cornerRadius: 22))
+    }
+
+    /// While a part is chosen: play it, let it go, share it, or cut the call down to it.
+    private func partBar(_ part: ClosedRange<TimeInterval>) -> some View {
+        HStack(spacing: 10) {
+            Button {
+                if !player.isPlaying, !part.contains(player.time) { player.seek(to: part.lowerBound) }
+                player.toggle()
+            } label: {
+                Image(systemName: player.isPlaying ? "pause.fill" : "play.fill").frame(width: 16, height: 16)
+            }
+            .buttonStyle(.glass).buttonBorderShape(.circle)
+            .keyboardShortcut(.space, modifiers: [])
+            .accessibilityLabel(player.isPlaying ? "Pause" : "Play")
+            Button("Cancel") { self.part = nil }
+                .buttonStyle(.glass)
+                .keyboardShortcut(.cancelAction)
+            Spacer()
+            Text(verbatim: "\(part.lowerBound.clock) – \(part.upperBound.clock)")
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+                .accessibilityLabel("From \(part.lowerBound.clock) to \(part.upperBound.clock)")
+            Spacer()
+            ShareLink(item: Clip(isMovie: recording.hasVideo) { [model, recording] in try await model.store.clip(of: recording, part) },
+                      preview: SharePreview(recording.title)) {
+                Label("Share", systemImage: "square.and.arrow.up")
+            }
+            .buttonStyle(.glass)
+            .help("Share this part as a file of its own")
+            Button("Trim") {
+                player.avPlayer.pause()
+                Task { await model.trim(recording, to: part, undo: undoManager) }
+            }
+            .buttonStyle(.glassProminent)
+            .keyboardShortcut(.defaultAction)
+            .disabled(model.transcribing[recording.id] != nil) // the transcript is being written
+            .help("Keep only this part of the call. Edit › Undo puts the rest back.")
+        }
+    }
+
+    private var controls: some View {
+        VStack(spacing: 10) {
             // Elapsed and remaining under the wave, like Music and Voice Memos.
             HStack {
                 Text(Double(player.second).clock)
@@ -422,8 +480,16 @@ private struct PlayerCard: View {
                     .buttonStyle(.glass).buttonBorderShape(.circle).controlSize(.large)
                     .help("Forward 15 seconds")
             }
-            // The speed rides on the side so play stays in the true center.
+            // Trimming and the speed ride on the sides so play stays in the true center.
             .frame(maxWidth: .infinity)
+            .overlay(alignment: .leading) {
+                Button("Trim or Share a Part", systemImage: "scissors") { part = 0...player.duration }
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(.glass).buttonBorderShape(.circle)
+                    .keyboardShortcut("t") // as in QuickTime Player
+                    .disabled(player.duration <= 1)
+                    .help("Trim or share a part")
+            }
             .overlay(alignment: .trailing) {
                 Menu {
                     Picker("Speed", selection: Bindable(player).rate) {
@@ -440,8 +506,75 @@ private struct PlayerCard: View {
                 .help("Playback speed")
             }
         }
-        .padding(20)
-        .background(.background.secondary, in: .rect(cornerRadius: 22))
+    }
+}
+
+/// The part being trimmed or shared, framed in yellow as QuickTime Player frames it, the rest
+/// dimmed. Its edges are dragged, and stick to a flag they come near.
+private struct PartFrame: View {
+    @Binding var part: ClosedRange<TimeInterval>
+    let duration: TimeInterval
+    let marks: [TimeInterval]
+
+    var body: some View {
+        GeometryReader { geometry in
+            let width = geometry.size.width
+            let start = x(part.lowerBound, width), end = x(part.upperBound, width)
+            ZStack(alignment: .topLeading) {
+                Rectangle().fill(.background.opacity(0.65)).frame(width: start)
+                Rectangle().fill(.background.opacity(0.65)).frame(width: max(0, width - end)).offset(x: end)
+                RoundedRectangle(cornerRadius: 6)
+                    .strokeBorder(.yellow, lineWidth: 3)
+                    .frame(width: max(6, end - start))
+                    .offset(x: start)
+            }
+            .allowsHitTesting(false) // a click inside still plays from there
+            edge(at: start, width: width, isStart: true)
+            edge(at: end, width: width, isStart: false)
+        }
+        .coordinateSpace(.named("part"))
+    }
+
+    private func x(_ time: TimeInterval, _ width: CGFloat) -> CGFloat {
+        duration > 0 ? CGFloat(time / duration) * width : 0
+    }
+
+    private func edge(at position: CGFloat, width: CGFloat, isStart: Bool) -> some View {
+        let time = isStart ? part.lowerBound : part.upperBound
+        return Capsule()
+            .fill(.yellow)
+            .frame(width: 8)
+            .padding(.vertical, -4)
+            .contentShape(.rect.inset(by: -6))
+            .position(x: min(max(position, 4), width - 4), y: 32)
+            .frame(height: 64)
+            .pointerStyle(.columnResize)
+            .gesture(DragGesture(coordinateSpace: .named("part")).onChanged { drag in
+                move(isStart, to: duration * min(max(0, drag.location.x / width), 1), snapping: 6 / width * duration)
+            })
+            .accessibilityElement()
+            .accessibilityLabel(isStart ? "Start of the part" : "End of the part")
+            .accessibilityValue(time.clock)
+            .accessibilityAdjustableAction { direction in move(isStart, to: time + (direction == .increment ? 1 : -1), snapping: 0) }
+    }
+
+    /// At least a second long; near a flag, on it.
+    private func move(_ isStart: Bool, to time: TimeInterval, snapping: TimeInterval) {
+        let time = marks.first { abs($0 - time) <= snapping } ?? time
+        part = isStart ? max(0, min(time, part.upperBound - 1))...part.upperBound : part.lowerBound...min(duration, max(time, part.lowerBound + 1))
+    }
+}
+
+/// A part of a call for Share: cut as it's shared, not before. The movie when the call has one.
+nonisolated struct Clip: Transferable {
+    let isMovie: Bool
+    let cut: @Sendable () async throws -> URL
+
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(exportedContentType: .quickTimeMovie) { SentTransferredFile(try await $0.cut()) }
+            .exportingCondition(\.isMovie)
+        FileRepresentation(exportedContentType: .mpeg4Audio) { SentTransferredFile(try await $0.cut()) }
+            .exportingCondition { !$0.isMovie }
     }
 }
 
