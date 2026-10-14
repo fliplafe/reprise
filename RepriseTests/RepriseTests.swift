@@ -31,7 +31,7 @@ import Testing
 
 struct MixDownTests {
     /// Mixes interleaved Float32 streams through `AudioRecorder.mixDown`, each side into its own buffer too with `sides`.
-    private func mix(_ streams: [(channels: Int, samples: [Float])], micChannels: Int, sides: Bool = false) -> (samples: [Float], you: Float, them: Float, sides: [[Float]]) {
+    private func mix(_ streams: [(channels: Int, samples: [Float])], micChannels: Int, sides: Bool = false, gains: (you: Float, them: Float) = (1, 1)) -> (samples: [Float], you: Float, them: Float, sides: [[Float]]) {
         let list = AudioBufferList.allocate(maximumBuffers: streams.count)
         let samples = streams.map { stream in
             let pointer = UnsafeMutablePointer<Float>.allocate(capacity: stream.samples.count)
@@ -48,7 +48,7 @@ struct MixDownTests {
         for (i, stream) in streams.enumerated() {
             list[i] = AudioBuffer(mNumberChannels: UInt32(stream.channels), mDataByteSize: UInt32(stream.samples.count * 4), mData: samples[i])
         }
-        let (frames, youPeak, themPeak) = AudioRecorder.mixDown(list, micChannels: micChannels, into: out, sides: sides ? (you, them) : nil, capacity: 64)
+        let (frames, youPeak, themPeak, _) = AudioRecorder.mixDown(list, micChannels: micChannels, into: out, sides: sides ? (you, them) : nil, gains: gains, capacity: 64)
         let read = { (buffer: UnsafeMutablePointer<Float>) in Array(UnsafeBufferPointer(start: buffer, count: frames)) }
         return (read(out), youPeak, themPeak, sides ? [read(you), read(them)] : [])
     }
@@ -78,6 +78,14 @@ struct MixDownTests {
         #expect(result.samples == [0.3 + 0.1, 1]) // the same mix as without the sides
     }
 
+    /// The gains level the mix; the sides keep the sound as it came.
+    @Test func levelsTheMixNotTheSides() {
+        #expect(mix([(1, [0.2]), (1, [0.1])], micChannels: 1, gains: (0.5, 2)).samples == [0.1 + 0.2])
+        let result = mix([(1, [0.2]), (1, [0.1])], micChannels: 1, sides: true, gains: (0.5, 2))
+        #expect(result.sides == [[0.2], [0.1]])
+        #expect(result.samples == [0.1 + 0.2])
+    }
+
     @Test func staysInsideAShortBuffer() {
         #expect(mix([(1, [0.5, 0.5]), (1, [0.25])], micChannels: 1).samples == [0.75, 0.5])
     }
@@ -95,6 +103,37 @@ struct MixDownTests {
             total += Int(out.frameLength)
         }
         #expect(abs(total - 48_000) < 200) // a second in, a second out: the sound keeps its speed
+    }
+}
+
+struct LevelerTests {
+    private let cycle = 0.04
+
+    /// A minute of the two sides taking turns: you at −20 dBFS, a guest at −38.
+    @Test func bringsAQuietGuestUpAndALoudMicDown() {
+        var leveler = Leveler()
+        for n in 0..<1500 {
+            let yours = n / 50 % 2 == 0 // two seconds each
+            leveler.listen(you: (yours ? 0.01 : 1e-7, 0.3), them: (yours ? 1e-7 : 1.6e-4, 0.05), seconds: cycle)
+        }
+        let decibels = { (gain: Float) in 20 * log10(gain) }
+        #expect(abs(decibels(leveler.gains.you) - -3) < 0.5) // to −23
+        #expect(abs(decibels(leveler.gains.them) - 9) < 0.5) // as far up as it goes
+    }
+
+    /// No speech, no judgment: silence and the other side's echo leave the gains alone.
+    @Test func leavesPausesAndEchoAlone() {
+        var leveler = Leveler()
+        for _ in 0..<1500 { leveler.listen(you: (1e-6, 0.01), them: (1e-4, 0.05), seconds: cycle) } // you only hear their echo
+        #expect(leveler.gains.you == 1)
+    }
+
+    /// Never into clipping: a shout brings the gain down at once.
+    @Test func neverClips() {
+        var leveler = Leveler()
+        for _ in 0..<1500 { leveler.listen(you: (1e-5, 0.05), them: (1e-7, 0), seconds: cycle) } // quiet: up to +9 dB
+        leveler.listen(you: (1e-2, 0.9), them: (1e-7, 0), seconds: cycle)
+        #expect(leveler.gains.you * 0.9 <= 1)
     }
 }
 

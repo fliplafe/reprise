@@ -36,6 +36,8 @@ nonisolated final class AudioRecorder: @unchecked Sendable {
     /// Host time right after the last sound in the file.
     private var end: UInt64?
     private let voices = Mutex<(you: Float, them: Float)>((0, 0))
+    /// Only on the IO queue.
+    private var leveler = Leveler()
     private let heard = Mutex(false)
     /// Host time of the last IO cycle with the Mac's sound in it.
     private let heardThem = Mutex<UInt64?>(nil)
@@ -236,8 +238,9 @@ nonisolated final class AudioRecorder: @unchecked Sendable {
         guard let out = cycle.first?.floatChannelData?[0] else { return }
         let buffers = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: input))
         let sides = cycle.count == 3 ? (you: cycle[1].floatChannelData![0], them: cycle[2].floatChannelData![0]) : nil
-        let (frames, you, them) = Self.mixDown(buffers, micChannels: micChannels, into: out, sides: sides, capacity: Int(cycle[0].frameCapacity))
+        let (frames, you, them, power) = Self.mixDown(buffers, micChannels: micChannels, into: out, sides: sides, gains: leveler.gains, capacity: Int(cycle[0].frameCapacity))
         guard frames > 0 else { return }
+        leveler.listen(you: (power.you, you), them: (power.them, them), seconds: Double(frames) / rate)
         voices.withLock { $0 = (max($0.you, you), max($0.them, them)) }
         if you > 0 || them > 0 { heard.withLock { $0 = true } }
         if them > 0 { heardThem.withLock { $0 = hostTime } }
@@ -293,14 +296,15 @@ nonisolated final class AudioRecorder: @unchecked Sendable {
 
     /// Mixes one IO cycle of interleaved Float32 buffers down to mono: the average of the
     /// first `micChannels` channels (the mic — the aggregate lists sub-device streams before
-    /// tap streams) plus the average of the rest (system audio), clipped to -1...1.
-    /// `sides` get each of the two averages on its own, clipped too.
-    /// Returns the number of frames written to `out` and the peak of each side before mixing.
+    /// tap streams) plus the average of the rest (system audio), each at its `gains`, clipped to -1...1.
+    /// `sides` get each of the two averages on its own, as they came, clipped too.
+    /// Returns the number of frames written to `out`, and each side's peak and mean power before mixing.
     static func mixDown(_ buffers: UnsafeMutableAudioBufferListPointer, micChannels: Int, into out: UnsafeMutablePointer<Float>,
-                        sides: (you: UnsafeMutablePointer<Float>, them: UnsafeMutablePointer<Float>)? = nil, capacity: Int) -> (frames: Int, you: Float, them: Float) {
-        guard let first = buffers.first, first.mNumberChannels > 0 else { return (0, 0, 0) }
+                        sides: (you: UnsafeMutablePointer<Float>, them: UnsafeMutablePointer<Float>)? = nil, gains: (you: Float, them: Float) = (1, 1),
+                        capacity: Int) -> (frames: Int, you: Float, them: Float, power: (you: Float, them: Float)) {
+        guard let first = buffers.first, first.mNumberChannels > 0 else { return (0, 0, 0, (0, 0)) }
         let frames = Int(first.mDataByteSize) / (MemoryLayout<Float>.size * Int(first.mNumberChannels))
-        guard frames > 0, frames <= capacity else { return (0, 0, 0) }
+        guard frames > 0, frames <= capacity else { return (0, 0, 0, (0, 0)) }
 
         let totalChannels = buffers.reduce(0) { $0 + Int($1.mNumberChannels) }
         let micWeight = micChannels > 0 ? 1 / Float(micChannels) : 0
@@ -309,7 +313,7 @@ nonisolated final class AudioRecorder: @unchecked Sendable {
         out.update(repeating: 0, count: frames)
         sides?.you.update(repeating: 0, count: frames)
         sides?.them.update(repeating: 0, count: frames)
-        var you: Float = 0, them: Float = 0
+        var you: Float = 0, them: Float = 0, youEnergy: Float = 0, themEnergy: Float = 0
         var channel = 0
         for buffer in buffers {
             let count = Int(buffer.mNumberChannels)
@@ -318,26 +322,65 @@ nonisolated final class AudioRecorder: @unchecked Sendable {
             let available = min(frames, Int(buffer.mDataByteSize) / (MemoryLayout<Float>.size * count)) // never read past a short buffer
             for c in 0..<count {
                 let isMic = channel + c < micChannels
-                let weight = isMic ? micWeight : systemWeight
+                // Into a side as it came; into the mix at the side's gain.
+                let weight = (isMic ? micWeight : systemWeight) * (sides != nil ? 1 : isMic ? gains.you : gains.them)
                 let into = sides.map { isMic ? $0.you : $0.them } ?? out
-                var loudest: Float = 0
+                var loudest: Float = 0, energy: Float = 0
                 for f in 0..<available {
                     let sample = data[f * count + c]
                     into[f] += sample * weight
                     loudest = max(loudest, abs(sample))
+                    energy += sample * sample
                 }
-                if isMic { you = max(you, loudest) } else { them = max(them, loudest) }
+                if isMic { you = max(you, loudest); youEnergy += energy * micWeight } else { them = max(them, loudest); themEnergy += energy * systemWeight }
             }
         }
         if let sides {
             for f in 0..<frames {
-                out[f] = sides.you[f] + sides.them[f]
+                out[f] = gains.you * sides.you[f] + gains.them * sides.them[f]
                 sides.you[f] = min(1, max(-1, sides.you[f]))
                 sides.them[f] = min(1, max(-1, sides.them[f]))
             }
         }
         for f in 0..<frames { out[f] = min(1, max(-1, out[f])) }
-        return (frames, you, them)
+        return (frames, you, them, (youEnergy / Float(frames), themEnergy / Float(frames)))
+    }
+}
+
+/// Brings the two sides of the mix to one loudness, as a hand on two faders would: slowly, by how
+/// each side's speech has sounded, never in a pause. A quiet guest comes up, a loud microphone
+/// down; the sides' own files keep the sound as it came.
+nonisolated struct Leveler {
+    /// Where both sides' speech goes, in dBFS: clearly heard, with room for both at once.
+    static let target: Float = -23
+    /// Never further either way, so a whisper doesn't turn into a shout, nor a hum into a voice.
+    static let range: ClosedRange<Float> = -6...9
+    private(set) var gains: (you: Float, them: Float) = (1, 1)
+    private var levels: (you: Float?, them: Float?) = (nil, nil)
+    private var heard: (you: Double, them: Double) = (0, 0)
+
+    /// One IO cycle of each side: its mean power and its peak.
+    mutating func listen(you: (power: Float, peak: Float), them: (power: Float, peak: Float), seconds: Double) {
+        let youLevel = Self.decibels(you.power), themLevel = Self.decibels(them.power)
+        // Speech, not a pause: above a hush, and not just the other side coming back through the
+        // speakers, which reaches the microphone 10 dB down or more.
+        Self.follow(&gains.you, &levels.you, &heard.you, level: youLevel, speaking: youLevel > -50 && youLevel > themLevel - 10, peak: you.peak, seconds: seconds)
+        Self.follow(&gains.them, &levels.them, &heard.them, level: themLevel, speaking: themLevel > -50 && themLevel > youLevel - 10, peak: them.peak, seconds: seconds)
+    }
+
+    private static func decibels(_ power: Float) -> Float { 10 * log10(max(power, 1e-12)) }
+
+    private static func follow(_ gain: inout Float, _ level: inout Float?, _ heard: inout Double, level now: Float, speaking: Bool, peak: Float, seconds: Double) {
+        if speaking {
+            heard += seconds
+            level = level.map { $0 + (now - $0) * Float(min(1, seconds / 3)) } ?? now // over the last few seconds
+        }
+        if heard >= 2, let level { // two seconds of speech before judging it
+            let wanted = pow(10, min(max(target - level, range.lowerBound), range.upperBound) / 20)
+            let step = pow(10, Float(seconds) / 20) // at most 1 dB a second: no pumping
+            gain = min(max(wanted, gain / step), gain * step)
+        }
+        if peak * gain > 1 { gain = 1 / peak } // never into clipping: down at once, back up slowly
     }
 }
 
