@@ -330,6 +330,19 @@ struct UpdaterTests {
         #expect(brief.hasSuffix("## Transcript\n\n[0:01] You: Hi all\n\n[1:01] Speaker 1: Ship it"))
     }
 
+    /// A library folder renamed in Finder is still the library; one deleted is gone.
+    @Test func libraryFolderFollowsARename() throws {
+        let scratch = FileManager.default.temporaryDirectory.appending(path: "reprise-library-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: scratch) }
+        let folder = scratch.appending(path: "Calls", directoryHint: .isDirectory), renamed = scratch.appending(path: "Old calls", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let bookmark = try folder.bookmarkData()
+        try FileManager.default.moveItem(at: folder, to: renamed)
+        #expect(RecordingStore.resolve(bookmark)?.folder.lastPathComponent == "Old calls")
+        try FileManager.default.removeItem(at: renamed)
+        #expect(RecordingStore.resolve(bookmark) == nil)
+    }
+
     /// Trashed while searching: the next match is selected, not the next call in the whole library.
     @Test func trashingSelectsTheNextCallShown() {
         #expect(AppModel.next(after: "b", in: ["a", "b", "d"]) == "d") // "c" is hidden by the search

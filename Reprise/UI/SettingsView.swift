@@ -33,6 +33,7 @@ private struct GeneralSettings: View {
     @State private var calendars = CalendarEvents.isAllowed
     @AppStorage(Shortcut.key) private var shortcut = ""
     @AppStorage(RecordingStore.keepScreenKey) private var keepScreenDays = 0
+    @State private var library = RecordingStore.root
     @State private var librarySize: Int64?
     @State private var shortcuts: [String] = []
     @AppStorage("screenAccessRequested") private var screenRequested = false
@@ -61,13 +62,15 @@ private struct GeneralSettings: View {
                     }
                 }
                 LabeledContent {
-                    Button("Show in Finder") { AppModel.shared.store.revealInFinder() }
+                    Button("Show in Finder") { model.store.revealInFinder() }
+                    Button("Change…", action: chooseLibrary)
+                        .disabled(model.session != nil || model.preroll != nil || !model.saving.isEmpty) // never under a recording
                 } label: {
                     Text("Saved in")
-                    let path = RecordingStore.root.path(percentEncoded: false).replacingOccurrences(of: NSHomeDirectory(), with: "~")
+                    let path = library.path(percentEncoded: false).replacingOccurrences(of: NSHomeDirectory(), with: "~")
                     Text(librarySize.map { "\(path) · \($0.formatted(.byteCount(style: .file)))" } ?? path)
                 }
-                .task { librarySize = await RecordingStore.size(of: RecordingStore.root) }
+                .task(id: library) { librarySize = await RecordingStore.size(of: library) }
                 Picker(selection: $keepScreenDays) {
                     Text("Forever").tag(0)
                     Text("3 Months").tag(90)
@@ -155,6 +158,22 @@ private struct GeneralSettings: View {
             screen = ScreenRecorder.hasPermission
             calendars = CalendarEvents.isAllowed
         }
+    }
+}
+
+extension GeneralSettings {
+    /// A folder elsewhere: on another disk, in iCloud Drive, or on a server, as the user wants it kept.
+    private func chooseLibrary() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.canCreateDirectories = true
+        panel.directoryURL = library
+        panel.prompt = String(localized: "Choose")
+        panel.message = String(localized: "Reprise saves new calls in this folder and shows the calls in it. The calls recorded so far stay where they are: to keep them in the library, move their folders here in Finder.")
+        guard panel.runModal() == .OK, let folder = panel.url else { return }
+        model.store.useLibrary(at: folder)
+        library = RecordingStore.root
     }
 }
 

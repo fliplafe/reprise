@@ -323,6 +323,16 @@
         }
       }
     },
+    "Change…" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменить…"
+          }
+        }
+      }
+    },
     "Check Now" : {
       "localizations" : {
         "ru" : {
@@ -349,6 +359,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Проверка…"
+          }
+        }
+      }
+    },
+    "Choose" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбрать"
           }
         }
       }
@@ -1445,6 +1465,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Reprise перезапустится, когда закончит."
+          }
+        }
+      }
+    },
+    "Reprise saves new calls in this folder and shows the calls in it. The calls recorded so far stay where they are: to keep them in the library, move their folders here in Finder." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reprise сохраняет новые звонки в эту папку и показывает звонки из неё. Записанные раньше звонки остаются на месте: чтобы они были в библиотеке, перенесите их папки сюда в Finder."
           }
         }
       }

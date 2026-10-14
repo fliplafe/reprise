@@ -77,9 +77,37 @@ enum CalendarEvents {
 }
 
 @Observable final class RecordingStore {
-    /// `REPRISE_ROOT` points a development build at a scratch library.
-    static let root = ProcessInfo.processInfo.environment["REPRISE_ROOT"].map { URL(filePath: $0, directoryHint: .isDirectory) }
-        ?? URL.moviesDirectory.appending(path: "Reprise", directoryHint: .isDirectory)
+    /// The library: the folder chosen in Settings, or Movies › Reprise. Changes only with the
+    /// choice, never under a recording. `REPRISE_ROOT` points a development build at a scratch library.
+    private(set) static var root = chosenRoot()
+    static let defaultRoot = URL.moviesDirectory.appending(path: "Reprise", directoryHint: .isDirectory)
+    /// A bookmark, as Finder's aliases: the folder moved or renamed in Finder is still the library.
+    private static let rootKey = "libraryFolder"
+
+    // ponytail: a library on a disk that isn't there at launch falls back to the default folder
+    // until the next launch with the disk. Watch for volumes mounting if that matters.
+    private static func chosenRoot() -> URL {
+        if let scratch = ProcessInfo.processInfo.environment["REPRISE_ROOT"] { return URL(filePath: scratch, directoryHint: .isDirectory) }
+        guard let bookmark = UserDefaults.standard.data(forKey: rootKey), let (folder, isStale) = resolve(bookmark) else { return defaultRoot }
+        if isStale, let fresh = try? folder.bookmarkData() { UserDefaults.standard.set(fresh, forKey: rootKey) }
+        return folder
+    }
+
+    /// Where the bookmarked folder is now, if it's there. Stale: it moved, and the bookmark should say where to.
+    static func resolve(_ bookmark: Data) -> (folder: URL, isStale: Bool)? {
+        var isStale = false
+        guard let folder = try? URL(resolvingBookmarkData: bookmark, options: .withoutUI, bookmarkDataIsStale: &isStale),
+              FileManager.default.fileExists(atPath: folder.path) else { return nil }
+        return (folder, isStale)
+    }
+
+    /// Shows and saves the calls in `folder` from now on: the default folder for none. The calls
+    /// recorded so far stay where they are.
+    func useLibrary(at folder: URL?) {
+        UserDefaults.standard.set(folder.flatMap { $0.path == Self.defaultRoot.path ? nil : try? $0.bookmarkData() }, forKey: Self.rootKey)
+        Self.root = Self.chosenRoot()
+        reload()
+    }
 
     private(set) var recordings: [Recording] = []
     /// Read once, not on every keystroke of a search. `nil` inside: there's no transcript.
