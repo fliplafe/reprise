@@ -1,4 +1,5 @@
 import AVFoundation
+import CoreSpotlight
 import SwiftUI
 
 @main
@@ -112,6 +113,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NotificationCenter.default.post(name: .openRepriseWindow, object: UserDefaults.standard.bool(forKey: "onboarded") ? "library" : "welcome")
         }
         return true
+    }
+
+    /// A click on a call in Spotlight, when it isn't handed over as Open Call: opens it in the library.
+    func application(_ application: NSApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([any NSUserActivityRestoring]) -> Void) -> Bool {
+        guard userActivity.activityType == CSSearchableItemActionType,
+              let id = (userActivity.userInfo?[CSSearchableItemActivityIdentifier] as? String).flatMap(Self.call(fromSpotlight:)) else { return false }
+        AppModel.shared.selection = id
+        NotificationCenter.default.post(name: .openRepriseWindow, object: "library")
+        return true
+    }
+
+    /// The call's ID in a Spotlight item's: "CallEntity/2026-10-06 21.30.12 Zoom".
+    static func call(fromSpotlight identifier: String) -> Recording.ID? {
+        identifier.hasPrefix("CallEntity/") ? String(identifier.dropFirst("CallEntity/".count)) : nil
     }
 
     func applicationWillTerminate(_ notification: Notification) {

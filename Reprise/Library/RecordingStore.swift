@@ -1,5 +1,6 @@
 import AVFoundation
 import AppKit
+import CoreSpotlight
 import EventKit
 
 /// One recorded call. Lives in its own folder:
@@ -100,6 +101,42 @@ enum CalendarEvents {
                 return recording
             }
             .sorted { $0.startedAt > $1.startedAt }
+        updateSpotlight()
+    }
+
+    func entity(of recording: Recording) -> CallEntity { CallEntity(recording, transcript: transcript(of: recording)) }
+
+    // MARK: Spotlight
+
+    /// Not the tests' library or a development build's scratch one: Spotlight is for the user's calls.
+    private static let indexesSpotlight = !isTesting && ProcessInfo.processInfo.environment["REPRISE_ROOT"] == nil
+    /// The calls Spotlight has, so a launch indexes only what changed while Reprise wasn't running.
+    /// A new number indexes the whole library again, for a change in what's indexed.
+    private static let indexedKey = "spotlightIndexed.1"
+
+    /// Indexes the calls Spotlight doesn't have yet, and removes those gone from the library.
+    private func updateSpotlight() {
+        guard Self.indexesSpotlight else { return }
+        let indexed = Set(UserDefaults.standard.stringArray(forKey: Self.indexedKey) ?? [])
+        let new = recordings.filter { !indexed.contains($0.id) }
+        let gone = indexed.subtracting(recordings.map(\.id))
+        guard !new.isEmpty || !gone.isEmpty else { return }
+        UserDefaults.standard.set(recordings.map(\.id), forKey: Self.indexedKey)
+        let entities = new.map(entity)
+        transcripts.removeAll() // read for the index only; the library reads its own as it needs them
+        Task {
+            try? await CSSearchableIndex.default().deleteAppEntities(identifiedBy: Array(gone), ofType: CallEntity.self)
+            try? await CSSearchableIndex.default().indexAppEntities(entities)
+        }
+    }
+
+    /// The call as it is now: renamed, marked, finished or transcribed.
+    private func index(_ recording: Recording) {
+        guard Self.indexesSpotlight else { return }
+        let entity = entity(of: recording)
+        Task { try? await CSSearchableIndex.default().indexAppEntities([entity]) }
+        var indexed = UserDefaults.standard.stringArray(forKey: Self.indexedKey) ?? []
+        if !indexed.contains(recording.id) { indexed.append(recording.id); UserDefaults.standard.set(indexed, forKey: Self.indexedKey) }
     }
 
     /// Creates the folder for a recording that is about to start.
@@ -176,6 +213,7 @@ enum CalendarEvents {
         } else {
             recordings.insert(recording, at: recordings.firstIndex { $0.startedAt < recording.startedAt } ?? recordings.endIndex)
         }
+        index(recording)
     }
 
     /// Deletes the early capture of calls nobody chose to record (Reprise quit while it asked):
@@ -304,6 +342,7 @@ enum CalendarEvents {
         guard (try? FileManager.default.trashItem(at: recording.folder, resultingItemURL: &trashed)) != nil else { return nil }
         try? FileManager.default.removeItem(at: recording.copiesFolder) // or they'd keep its space after the Trash is emptied
         recordings.removeAll { $0.id == recording.id }
+        updateSpotlight()
         return trashed as URL?
     }
 

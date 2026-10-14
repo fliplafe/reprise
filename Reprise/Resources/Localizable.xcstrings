@@ -1,6 +1,9 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@" : {
+      "shouldTranslate" : false
+    },
     "%@ call" : {
       "localizations" : {
         "ru" : {
@@ -190,6 +193,16 @@
         }
       }
     },
+    "App" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Приложение"
+          }
+        }
+      }
+    },
     "Apps" : {
       "localizations" : {
         "ru" : {
@@ -276,6 +289,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Календари"
+          }
+        }
+      }
+    },
+    "Call" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Звонок"
           }
         }
       }
@@ -450,12 +473,32 @@
         }
       }
     },
+    "Date" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Дата"
+          }
+        }
+      }
+    },
     "Don't Record" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Не записывать"
+          }
+        }
+      }
+    },
+    "Duration" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Длительность"
           }
         }
       }
@@ -506,6 +549,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Завершите запись, затем установите обновление."
+          }
+        }
+      }
+    },
+    "Folder" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Папка"
           }
         }
       }
@@ -960,6 +1013,16 @@
         }
       }
     },
+    "Open Call" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть звонок"
+          }
+        }
+      }
+    },
     "Open GitHub" : {
       "localizations" : {
         "ru" : {
@@ -1000,6 +1063,16 @@
         }
       }
     },
+    "Opens the call in Reprise's library." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открывает звонок в библиотеке Reprise."
+          }
+        }
+      }
+    },
     "Optional, for recording the screen." : {
       "localizations" : {
         "ru" : {
@@ -1026,6 +1099,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Собеседники"
+          }
+        }
+      }
+    },
+    "Participants" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Участники"
           }
         }
       }

@@ -1,5 +1,7 @@
 import AVFoundation
+import AppIntents
 import CoreAudio
+import CoreSpotlight
 import EventKit
 import Testing
 @testable import Reprise
@@ -429,5 +431,18 @@ struct TranscriptTests {
         let answer = #"{"task":"transcribe","text":"Shall we start? Yes.","segments":[{"type":"transcript.text.segment","id":"seg_0","start":0.0,"end":1.5,"speaker":"A","text":" Shall we start?"},{"type":"transcript.text.segment","id":"seg_1","start":2.0,"end":4.0,"speaker":"B","text":"Yes."}]}"#
         let segments = try JSONDecoder().decode(Transcript.self, from: Data(answer.utf8)).segments
         #expect(segments.map(\.speaker) == ["A", "B"] && segments[1].end == 4)
+    }
+}
+
+@MainActor struct SpotlightTests {
+    /// Found by its title, the people invited and what was said.
+    @Test func callIsFoundByItsTitlePeopleAndWords() {
+        let recording = Recording(id: "2026-10-06 21.30.12 Zoom", title: "Standup", app: nil, startedAt: .now, duration: 95, hasVideo: false, participants: ["Anna"])
+        let item = CallEntity(recording, transcript: "Ship it").attributeSet
+        #expect(item.displayName == "Standup")
+        #expect(item.participants == ["Anna"])
+        let spotlight = CSSearchableItem(appEntity: CallEntity(recording, transcript: "Ship it"))
+        #expect(spotlight.attributeSet.textContent == "Ship it")
+        #expect(AppDelegate.call(fromSpotlight: spotlight.uniqueIdentifier) == recording.id) // a click on the result opens it
     }
 }
