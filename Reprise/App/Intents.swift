@@ -1,4 +1,5 @@
 import AppIntents
+import AppKit
 
 // Spotlight, Shortcuts and Siri pick these up on their own. A shortcut built from one can
 // also get a keyboard shortcut in the Shortcuts app — a global hotkey without any code here.
@@ -33,6 +34,20 @@ nonisolated struct MarkMomentIntent: AppIntent {
     }
 }
 
+nonisolated struct CopyLastCallIntent: AppIntent {
+    static let title: LocalizedStringResource = "Copy the Last Call"
+    static let description = IntentDescription("Copies the last call's transcript with details: its title and date, when each turn began, its marks and the folder of its files. A shortcut can also pass the text on.")
+
+    @MainActor func perform() async throws -> some IntentResult & ReturnsValue<String> {
+        let model = AppModel.shared
+        guard let last = model.store.recordings.first(where: { !model.isLive($0) }) else { throw Failure("There are no saved calls yet.") }
+        let brief = model.store.brief(of: last)
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(brief, forType: .string)
+        return .result(value: brief)
+    }
+}
+
 nonisolated struct RepriseShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(
@@ -52,6 +67,12 @@ nonisolated struct RepriseShortcuts: AppShortcutsProvider {
             phrases: ["Mark this moment with \(.applicationName)", "Mark the call with \(.applicationName)"],
             shortTitle: "Mark This Moment",
             systemImageName: "flag"
+        )
+        AppShortcut(
+            intent: CopyLastCallIntent(),
+            phrases: ["Copy the last call with \(.applicationName)"],
+            shortTitle: "Copy the Last Call",
+            systemImageName: "doc.on.doc"
         )
     }
 }

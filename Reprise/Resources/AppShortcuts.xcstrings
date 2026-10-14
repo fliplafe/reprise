@@ -1,6 +1,16 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Copy the last call with ${applicationName}" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скопировать последний звонок в ${applicationName}"
+          }
+        }
+      }
+    },
     "Mark the call with ${applicationName}" : {
       "localizations" : {
         "ru" : {

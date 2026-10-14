@@ -370,12 +370,32 @@
         }
       }
     },
+    "Copies the last call's transcript with details: its title and date, when each turn began, its marks and the folder of its files. A shortcut can also pass the text on." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Копирует расшифровку последнего звонка с подробностями: названием и датой, временем каждой реплики, отметками и папкой с его файлами. Быстрая команда может передать текст дальше."
+          }
+        }
+      }
+    },
     "Copy" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Скопировать"
+          }
+        }
+      }
+    },
+    "Copy the Last Call" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скопировать последний звонок"
           }
         }
       }
@@ -1692,6 +1712,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Быстрая команда получает папку звонка, когда он сохранён, — с расшифровкой, если Reprise расшифровывает звонки автоматически. Она может переместить файлы, запустить для них скрипт или отправить их дальше."
+          }
+        }
+      }
+    },
+    "There are no saved calls yet." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сохранённых звонков пока нет."
           }
         }
       }
