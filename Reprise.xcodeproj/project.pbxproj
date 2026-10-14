@@ -13,7 +13,11 @@
 		3C92ED9F2027E97EE51E2761 /* Updater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28571E0825C5C03BFAA9CA6F /* Updater.swift */; };
 		3FF9052E9909A478527C5BC4 /* RecordingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA49747C7F467D90DE80AC2A /* RecordingStore.swift */; };
 		42E4BDA9691FCB6468BC2149 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 930066FC9B07075718F9F50C /* AppModel.swift */; };
+		4744351757BD00328B62DE85 /* RecordingControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = E82B82F32217F8270628030C /* RecordingControl.swift */; };
+		494A4567C0927B18CAD22283 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 99DE1BB9800605B201A7E21C /* Localizable.xcstrings */; };
 		591DB9213208ADFD9A881DC1 /* MeetingDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9043239B474E12ECE71F5FD /* MeetingDetector.swift */; };
+		6C7C5F6DBA86C3A26F028811 /* RepriseControls.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 7CFA3FB35EBD9428265A0876 /* RepriseControls.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		72B98AB439F24FAA4FFA81DF /* RecordingControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = E82B82F32217F8270628030C /* RecordingControl.swift */; };
 		7338E93501383CEC6BE17B3C /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 892A0B78D5E7B007506D76FF /* SettingsView.swift */; };
 		781B3558C56B51B3FC2C62BA /* AVKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C11AE3AAEAC84F35BDD60BA8 /* AVKit.framework */; };
 		796A40F671A89D120CEDA539 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B7DEFA51BD022745B069C07 /* LibraryView.swift */; };
@@ -25,6 +29,7 @@
 		AEBA9355CB7CB56FE35F41E7 /* DebugSnapshots.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6B032CD642845CDF71426E4 /* DebugSnapshots.swift */; };
 		AF00D98313B1887E57FD05D8 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 530209C8AB6693871B1104C6 /* WelcomeView.swift */; };
 		CA06D8BAA63E699164167FDC /* Island.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81C1FDC30EE7E8205BF02A6B /* Island.swift */; };
+		F10520BEB11D21149E39239A /* RecordControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0781C65648A5B23F50E5DDFD /* RecordControl.swift */; };
 		F4917861A14FCC528E83DED7 /* Transcriber.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC49C9C574B9EDCD3B3B6CA0 /* Transcriber.swift */; };
 		F5CAC0F1C3EF214CAD305B9A /* RepriseApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AF754BB3AA3ED57830AA2ED /* RepriseApp.swift */; };
 		F8BC91208B0BF63DB91862A3 /* CoreAudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCB88BA6CED02E9A036994DC /* CoreAudio.swift */; };
@@ -39,25 +44,51 @@
 			remoteGlobalIDString = A9A1C853BF1FBFF0827CC788;
 			remoteInfo = Reprise;
 		};
+		E61C5B081ED0F2F9CA9534FD /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0267A872169D0F3B364DC4A8 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 87D41880A3F89667859CFA44;
+			remoteInfo = RepriseControls;
+		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		889362B4705019ABAAB1D8F4 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				6C7C5F6DBA86C3A26F028811 /* RepriseControls.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		0781C65648A5B23F50E5DDFD /* RecordControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordControl.swift; sourceTree = "<group>"; };
 		08EF97DBBD3CD208C15D737C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		0AA994BD5852FCD005070692 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		1D223B7738F8D7E2EEB012EA /* Intents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Intents.swift; sourceTree = "<group>"; };
+		1F393C211ED49E18A8224023 /* RepriseControls.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = RepriseControls.entitlements; sourceTree = "<group>"; };
 		20B146D1772A5562897F2A7A /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
 		28571E0825C5C03BFAA9CA6F /* Updater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Updater.swift; sourceTree = "<group>"; };
+		31B44F12CAAE4172E145B1ED /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		3AF754BB3AA3ED57830AA2ED /* RepriseApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepriseApp.swift; sourceTree = "<group>"; };
 		4DBD3826D223B00CA49B5672 /* ScreenRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenRecorder.swift; sourceTree = "<group>"; };
 		530209C8AB6693871B1104C6 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
 		67B64DEA37D02998C538DD3A /* Reprise.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Reprise.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7B7DEFA51BD022745B069C07 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
+		7CFA3FB35EBD9428265A0876 /* RepriseControls.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = RepriseControls.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		81C1FDC30EE7E8205BF02A6B /* Island.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Island.swift; sourceTree = "<group>"; };
 		892A0B78D5E7B007506D76FF /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		8B74C2926E335B3CA694E824 /* AppShortcuts.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = AppShortcuts.xcstrings; sourceTree = "<group>"; };
 		8E81ABB7728C79F330920819 /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = AppIcon.icon; sourceTree = "<group>"; };
 		91D5314F710C5FABF64E3E34 /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
 		930066FC9B07075718F9F50C /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		99DE1BB9800605B201A7E21C /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		AD0BD910C3EB44BFE767B269 /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
 		B5EA41968814ACF5C3D8CFAC /* AudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecorder.swift; sourceTree = "<group>"; };
 		B9043239B474E12ECE71F5FD /* MeetingDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingDetector.swift; sourceTree = "<group>"; };
@@ -67,6 +98,7 @@
 		C8CE99097E36215A297E2A71 /* RepriseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepriseTests.swift; sourceTree = "<group>"; };
 		CA49747C7F467D90DE80AC2A /* RecordingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingStore.swift; sourceTree = "<group>"; };
 		CCB88BA6CED02E9A036994DC /* CoreAudio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreAudio.swift; sourceTree = "<group>"; };
+		E82B82F32217F8270628030C /* RecordingControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingControl.swift; sourceTree = "<group>"; };
 		E82CE4AFB2ECB01BB6C1618C /* Reprise.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Reprise.entitlements; sourceTree = "<group>"; };
 		EC49C9C574B9EDCD3B3B6CA0 /* Transcriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Transcriber.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -95,6 +127,7 @@
 			isa = PBXGroup;
 			children = (
 				67B64DEA37D02998C538DD3A /* Reprise.app */,
+				7CFA3FB35EBD9428265A0876 /* RepriseControls.appex */,
 				BF6805715BFAFB008B2F07E3 /* RepriseTests.xctest */,
 			);
 			name = Products;
@@ -111,6 +144,17 @@
 				E82CE4AFB2ECB01BB6C1618C /* Reprise.entitlements */,
 			);
 			path = Resources;
+			sourceTree = "<group>";
+		};
+		728C6FB41E7ACB80A8F4967A /* RepriseControls */ = {
+			isa = PBXGroup;
+			children = (
+				31B44F12CAAE4172E145B1ED /* Info.plist */,
+				99DE1BB9800605B201A7E21C /* Localizable.xcstrings */,
+				0781C65648A5B23F50E5DDFD /* RecordControl.swift */,
+				1F393C211ED49E18A8224023 /* RepriseControls.entitlements */,
+			);
+			path = RepriseControls;
 			sourceTree = "<group>";
 		};
 		73647E71449887AB363E0925 /* UI */ = {
@@ -187,6 +231,7 @@
 				930066FC9B07075718F9F50C /* AppModel.swift */,
 				C6B032CD642845CDF71426E4 /* DebugSnapshots.swift */,
 				1D223B7738F8D7E2EEB012EA /* Intents.swift */,
+				E82B82F32217F8270628030C /* RecordingControl.swift */,
 				3AF754BB3AA3ED57830AA2ED /* RepriseApp.swift */,
 				28571E0825C5C03BFAA9CA6F /* Updater.swift */,
 			);
@@ -198,6 +243,7 @@
 			children = (
 				9AA2CD42D755D14573B6A977 /* Config */,
 				E06FECCD4F5D06EDFAA2125B /* Reprise */,
+				728C6FB41E7ACB80A8F4967A /* RepriseControls */,
 				26C88428D3D8B71B6E361877 /* RepriseTests */,
 				B966094ADF67E238A3642203 /* Frameworks */,
 				3475AEC63AD9A70C9E8DEF33 /* Products */,
@@ -225,6 +271,24 @@
 			productReference = BF6805715BFAFB008B2F07E3 /* RepriseTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		87D41880A3F89667859CFA44 /* RepriseControls */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 63FA5797881930E0B7ABA502 /* Build configuration list for PBXNativeTarget "RepriseControls" */;
+			buildPhases = (
+				EFFB576FF4B814B0456C4D7B /* Sources */,
+				94EAFE222DB352A5658D908E /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = RepriseControls;
+			packageProductDependencies = (
+			);
+			productName = RepriseControls;
+			productReference = 7CFA3FB35EBD9428265A0876 /* RepriseControls.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		A9A1C853BF1FBFF0827CC788 /* Reprise */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 973CFD1DBAD8674C067FB6F7 /* Build configuration list for PBXNativeTarget "Reprise" */;
@@ -232,10 +296,12 @@
 				55C7677F181D77ED55A50549 /* Sources */,
 				AF31DC873B78DCA31EAC39A6 /* Resources */,
 				41A1B4FCB593AE90AF3843E8 /* Frameworks */,
+				889362B4705019ABAAB1D8F4 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				750EDBBF005230EFC2E83297 /* PBXTargetDependency */,
 			);
 			name = Reprise;
 			packageProductDependencies = (
@@ -254,6 +320,10 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					36E9F2F37AEE2FE6170D27E4 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Manual;
+					};
+					87D41880A3F89667859CFA44 = {
 						DevelopmentTeam = "";
 						ProvisioningStyle = Manual;
 					};
@@ -279,12 +349,21 @@
 			projectRoot = "";
 			targets = (
 				A9A1C853BF1FBFF0827CC788 /* Reprise */,
+				87D41880A3F89667859CFA44 /* RepriseControls */,
 				36E9F2F37AEE2FE6170D27E4 /* RepriseTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		94EAFE222DB352A5658D908E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				494A4567C0927B18CAD22283 /* Localizable.xcstrings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		AF31DC873B78DCA31EAC39A6 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -320,6 +399,7 @@
 				796A40F671A89D120CEDA539 /* LibraryView.swift in Sources */,
 				591DB9213208ADFD9A881DC1 /* MeetingDetector.swift in Sources */,
 				7FAAF0B280BA1AADCD3A49A6 /* MenuBarView.swift in Sources */,
+				4744351757BD00328B62DE85 /* RecordingControl.swift in Sources */,
 				3FF9052E9909A478527C5BC4 /* RecordingStore.swift in Sources */,
 				F5CAC0F1C3EF214CAD305B9A /* RepriseApp.swift in Sources */,
 				AB50DEE52BBD9F8DFE9CEC9D /* ScreenRecorder.swift in Sources */,
@@ -330,6 +410,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		EFFB576FF4B814B0456C4D7B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F10520BEB11D21149E39239A /* RecordControl.swift in Sources */,
+				72B98AB439F24FAA4FFA81DF /* RecordingControl.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -337,6 +426,11 @@
 			isa = PBXTargetDependency;
 			target = A9A1C853BF1FBFF0827CC788 /* Reprise */;
 			targetProxy = 46AD6D88439629CBE8A9386C /* PBXContainerItemProxy */;
+		};
+		750EDBBF005230EFC2E83297 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 87D41880A3F89667859CFA44 /* RepriseControls */;
+			targetProxy = E61C5B081ED0F2F9CA9534FD /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -357,6 +451,24 @@
 				SDKROOT = macosx;
 			};
 			name = Debug;
+		};
+		09D0E32E34FC582BDACB5580 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = RepriseControls/RepriseControls.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = RepriseControls/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.nikiomori.reprise.controls;
+				PRODUCT_NAME = RepriseControls;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) CONTROLS";
+			};
+			name = Release;
 		};
 		3D1009037E29E369FB9F26ED /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -429,6 +541,24 @@
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		93FB1285A05DD008F5D3C351 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = RepriseControls/RepriseControls.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = RepriseControls/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.nikiomori.reprise.controls;
+				PRODUCT_NAME = RepriseControls;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) CONTROLS";
 			};
 			name = Debug;
 		};
@@ -558,6 +688,15 @@
 			buildConfigurations = (
 				3D1009037E29E369FB9F26ED /* Debug */,
 				991C7D3B517C3DF174A7EA1C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		63FA5797881930E0B7ABA502 /* Build configuration list for PBXNativeTarget "RepriseControls" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				93FB1285A05DD008F5D3C351 /* Debug */,
+				09D0E32E34FC582BDACB5580 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

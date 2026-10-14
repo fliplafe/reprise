@@ -32,6 +32,7 @@ targets:
       # VideoPlayer lives in _AVKit_SwiftUI, which doesn't load AVKit itself;
       # without an explicit link the player view's superclass is missing at runtime.
       - sdk: AVKit.framework
+      - target: RepriseControls
     info:
       path: Reprise/Resources/Info.plist
       properties:
@@ -54,6 +55,30 @@ targets:
         PRODUCT_NAME: Reprise
     scheme:
       testTargets: [RepriseTests]
+  # The Record control in Control Center and the menu bar.
+  RepriseControls:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: RepriseControls
+      - path: Reprise/App/RecordingControl.swift
+    info:
+      path: RepriseControls/Info.plist
+      properties:
+        CFBundleDisplayName: Reprise
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: RepriseControls/RepriseControls.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.nikiomori.reprise.controls
+        PRODUCT_NAME: RepriseControls
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) CONTROLS
   RepriseTests:
     type: bundle.unit-test
     platform: macOS

@@ -456,6 +456,16 @@ struct TranscriptTests {
     }
 }
 
+@MainActor struct RecordingControlTests {
+    /// The control's extension reads what Reprise last said, in another process.
+    @Test func controlSeesWhetherRepriseRecords() {
+        RecordingControl.show(recording: true)
+        #expect(RecordingControl.isRecording)
+        RecordingControl.show(recording: false)
+        #expect(!RecordingControl.isRecording)
+    }
+}
+
 @MainActor struct SpotlightTests {
     /// Found by its title, the people invited and what was said.
     @Test func callIsFoundByItsTitlePeopleAndWords() {

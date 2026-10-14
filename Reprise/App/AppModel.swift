@@ -28,7 +28,9 @@ enum IslandState: Equatable {
         // The prompt went away without a Record: nobody wanted that early audio.
         didSet { if let app = preroll?.recording.app, island != .prompt(app) { discardPreroll() } }
     }
-    private(set) var session: Session?
+    private(set) var session: Session? {
+        didSet { if (session == nil) != (oldValue == nil) { RecordingControl.show(recording: session != nil) } }
+    }
     /// Recordings stopped but not saved yet: their files are still being finished.
     private(set) var saving: Set<Recording.ID> = []
     /// The call captured from its first second while the prompt asks whether to keep it.

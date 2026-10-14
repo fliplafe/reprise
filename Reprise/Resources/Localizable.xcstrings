@@ -1353,6 +1353,16 @@
         }
       }
     },
+    "Records the call going on, or stops the recording." : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Записывает идущий звонок или останавливает запись."
+          }
+        }
+      }
+    },
     "Records the call going on, or your microphone and the sound of the Mac." : {
       "localizations" : {
         "ru" : {
