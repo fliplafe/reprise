@@ -12,6 +12,7 @@ import Testing
         ("company.thebrowser.browser.helper", "Arc"),
         ("com.apple.WebKit.GPU", "Safari"),
         ("com.microsoft.teams2", "Microsoft Teams"),
+        ("com.apple.mobilephone", "Phone"),
         ("ru.yandex.desktop.telemost", "Yandex Telemost"),
     ])
     func matchesCallApps(bundleID: String, name: String) {

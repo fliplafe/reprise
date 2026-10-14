@@ -49,6 +49,7 @@ struct MeetingApp: Hashable, Codable, Identifiable, Sendable {
         .init(id: "us.zoom.xos", name: "Zoom"),
         .init(id: "com.microsoft.teams2", name: "Microsoft Teams"),
         .init(id: "com.apple.FaceTime", name: "FaceTime"),
+        .init(id: "com.apple.mobilephone", name: String(localized: "Phone")), // iPhone calls on the Mac, since macOS 26
         .init(id: "com.tinyspeck.slackmacgap", name: "Slack"),
         .init(id: "com.hnc.Discord", name: "Discord"),
         .init(id: "Cisco-Systems.Spark", name: "Webex"),

@@ -1050,6 +1050,16 @@
         }
       }
     },
+    "Phone" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Телефон"
+          }
+        }
+      }
+    },
     "Play" : {
       "localizations" : {
         "ru" : {
